@@ -1,0 +1,140 @@
+6/18/2024
+
+The issue was i did not stayed logged in once i closed and relaunched my application
+but now i know how to do this.
+
+Step 1.Make sure you already have your db created.
+
+Step 2. In the AppDatabase make sure to change the version to 2
+
+Step 3.In the UserRepository add the shared prefs saveLoginState and isUserLoggedIn:
+
+ private val sharedPreferences: SharedPreferences = context.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
+
+    fun saveLoginState(isLoggedIn: Boolean) {
+        sharedPreferences.edit().putBoolean("isLoggedIn", isLoggedIn).apply()
+    }
+
+    fun isUserLoggedIn(): Boolean {
+        return sharedPreferences.getBoolean("isLoggedIn", false)
+    }
+
+Step 4.In the UserDao create the  updateLoginStatus getLoggedInUser
+
+ @Query("UPDATE user SET isLoggedIn = :isLoggedIn WHERE username = :username")
+    suspend fun updateLoginStatus(username: String, isLoggedIn: Boolean)
+
+    @Query("SELECT * FROM user WHERE isLoggedIn = 1 LIMIT 1")
+    suspend fun getLoggedInUser(): User?
+
+Step 5.In the UserViewModel create the loginUser, logoutUser and getLoggedInUser:
+suspend fun loginUser(username: String) {
+        val user = userRepository.getUser(username)
+        if (user != null) {
+            userRepository.updateLoginStatus(username, true)
+            userRepository.saveLoginState(true)
+        }
+    }
+
+    suspend fun logoutUser(username: String) {
+        userRepository.updateLoginStatus(username, false)
+        userRepository.saveLoginState(false)
+    }
+
+    suspend fun getLoggedInUser(): User? {
+        return userRepository.getLoggedInUser()
+    }
+
+Step 6.Create a HomeScreen screen and add this:
+
+@Composable
+fun HomeScreen(navController: NavController, viewModel: UserViewModel) {
+    val context = LocalContext.current
+    var username by remember { mutableStateOf("") }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        coroutineScope.launch {
+            val user = viewModel.getLoggedInUser()
+            if (user != null) {
+                username = user.username
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text = "Welcome, $username", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = {
+                coroutineScope.launch {
+                    viewModel.logoutUser(username)
+                    navController.navigate("login_screen") {
+                        popUpTo("home_screen") { inclusive = true }
+                    }
+                }
+            }) {
+                Text("Logout")
+            }
+        }
+    }
+}
+
+Step 7.In the Mainactivity update it:
+
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        // Create an instance of the UserRepository
+        val repository = UserRepository(applicationContext)
+
+        // Create a ViewModelFactory to provide the repository to the ViewModel
+        val viewModelFactory = UserViewModelFactory(repository)
+
+        // Obtain the UserViewModel instance using the ViewModelProvider
+        val viewModel = ViewModelProvider(this, viewModelFactory)
+            .get(UserViewModel::class.java)
+
+        // Set the content of the activity using a composable function
+        setContent {
+            val isUserLoggedIn = repository.isUserLoggedIn()
+            val startDestination = if (isUserLoggedIn) "home_screen" else "login_screen"
+            HomeNavigation(viewModel, startDestination)
+        }
+    }
+}
+
+
+
+class UserViewModelFactory(
+    private val repository: UserRepository
+) : ViewModelProvider.Factory{
+
+    // Create and return a UserViewModel with the injected repository
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        return UserViewModel(repository) as T
+    }
+
+}
+
+@Composable
+fun HomeNavigation(viewModel: UserViewModel, startDestination: String) {
+    val navController = rememberNavController()
+
+    NavHost(navController = navController, startDestination = startDestination) {
+        composable("login_screen") {
+            LoginScreen(navController = navController, viewModel)
+        }
+        composable("signup_screen") {
+            SignUpScreen(navController = navController, viewModel)
+        }
+        composable("home_screen") {
+            HomeScreen(navController, viewModel)
+        }
+    }
+}
