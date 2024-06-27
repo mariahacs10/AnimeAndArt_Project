@@ -1,0 +1,202 @@
+6/26/204
+
+Problems:
+
+1.My issue is the side navigation drawer is too fast, on my physical device but it works fine on other phones
+2.I fixed when you login to a different account it doesnt save that image from the other account it changes
+
+----------------------------------------------------------------------------------------------------------------
+
+Heres the Step by step notes:
+
+
+1.Add Image Handling in ProfileImage Composable:
+@Composable
+fun ProfileImage(username: String) {
+    val imageUri = rememberSaveable { mutableStateOf("") }
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    val painter = rememberAsyncImagePainter(
+        model = if (imageUri.value.isNotEmpty()) imageUri.value else R.drawable.baseline_person,
+        placeholder = painterResource(R.drawable.baseline_person)
+    )
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            imageUri.value = it.toString()
+            coroutineScope.launch {
+                if (imageUri.value.isNotEmpty()) {
+                    val imageRequest = ImageRequest.Builder(context)
+                        .data(imageUri.value)
+                        .build()
+                    val bitmap = context.imageLoader.execute(imageRequest).drawable?.toBitmap()
+                    bitmap?.let { bmp ->
+                        saveImageToInternalStorage(context, bmp, getProfileImageFilename(username))
+                    }
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(username) {
+        val savedImagePath = getSavedImagePath(context, username)
+        imageUri.value = savedImagePath
+    }
+
+    Column(
+        modifier = Modifier
+            .padding(8.dp)
+            .fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Card(
+            shape = CircleShape,
+            modifier = Modifier
+                .padding(8.dp)
+                .size(88.dp)
+        ) {
+            Image(
+                painter = painter,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape)
+                    .clickable { launcher.launch("image/*") },
+                contentScale = ContentScale.Crop
+            )
+        }
+    }
+}
+
+Step 2.You want to create the methods for getting the images and saving them:
+private fun getSavedImagePath(context: Context, username: String): String {
+    val file = File(context.filesDir, getProfileImageFilename(username))
+    return if (file.exists()) file.absolutePath else ""
+}
+
+private fun saveImageToInternalStorage(context: Context, bitmap: Bitmap, filename: String) {
+    try {
+        context.openFileOutput(filename, Context.MODE_PRIVATE).use { fos ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos)
+        }
+    } catch (e: IOException) {
+        Log.e("ProfileImage", "Error saving image: ${e.message}")
+    }
+}
+
+private fun getProfileImageFilename(username: String): String {
+    return "profile_image_${username}.jpg"
+}
+
+Step 3.You want to create the Side drawer, and we have a custom animation for it also:
+OptIn(ExperimentalMaterial3Api::class)
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
+@Composable
+fun HomeScreen(navController: NavController, viewModel: UserViewModel) {
+    var username by remember { mutableStateOf("") }
+    val coroutineScope = rememberCoroutineScope()
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val isVisible by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        coroutineScope.launch {
+            val user = viewModel.getLoggedInUser()
+            if (user != null) {
+                username = user.username
+            }
+        }
+    }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        gesturesEnabled = true,
+        drawerContent = {
+
+            AnimatedVisibility(
+                visible = isVisible,
+                enter = slideInHorizontally(
+                    initialOffsetX = { it / 2 },  // Start from half width off-screen
+                    animationSpec = tween(durationMillis = 1200, easing = EaseInOutCubic)
+                ) + fadeIn(
+                    initialAlpha = 0f,
+                    animationSpec = tween(durationMillis = 1200, easing = EaseInOutCubic)
+                ),
+                exit = slideOutHorizontally(
+                    targetOffsetX = { it / 2 },  // Slide out to half width off-screen
+                    animationSpec = tween(durationMillis = 1200, easing = EaseInOutCubic)
+                ) + fadeOut(
+                    targetAlpha = 0f,
+                    animationSpec = tween(durationMillis = 1200, easing = EaseInOutCubic)
+                ),
+                modifier = Modifier.fillMaxHeight().width(218.dp)
+            ){
+                ModalDrawerSheet(
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.primary)
+                        .fillMaxWidth(0.8f)
+                        .fillMaxHeight()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.primary)
+                            .fillMaxWidth()
+                            .height(150.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        ProfileImage(username)
+                        Text(username, style = TextStyle(fontSize = 20.sp, color = Color.White))
+                    }
+
+                    Divider()
+
+                    NavigationDrawerItem(
+                        label = { Text(text = "Logout", color = Color.Black) },
+                        selected = false,
+                        icon = { Icon(Icons.Filled.ExitToApp, contentDescription = "Logout") },
+                        onClick = {
+                            coroutineScope.launch {
+                                viewModel.logoutUser(username)
+                                navController.navigate("login_screen") {
+                                    popUpTo("home_screen") { inclusive = true }
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    ) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Practice App") },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            coroutineScope.launch {
+                                if (drawerState.isClosed) {
+                                    drawerState.open()
+                                    Log.d("DrawerState", "Drawer Opened - isVisible: $isVisible")  // Add this line
+                                } else {
+                                    drawerState.close()
+                                    Log.d("DrawerState", "Drawer Closed - isVisible: $isVisible")  // Add this line
+                                }
+                            }
+                        }) {
+                            Icon(Icons.Rounded.Menu, contentDescription = "MenuButton")
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = Color.White,
+                        navigationIconContentColor = Color.White
+                    )
+                )
+            }
+        ) {
+            MainScreen()
+        }
+    }
+}

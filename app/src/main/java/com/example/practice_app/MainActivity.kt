@@ -11,6 +11,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.practice_app.models.UserRepository
 import com.example.practice_app.models.UserViewModel
+import com.example.practice_app.navigation.NavRoutes
+import com.example.practice_app.screen.AnimeComposable
+import com.example.practice_app.screen.ArtWorkComposable
+import com.example.practice_app.screen.CommingSoonComposable
 import com.example.practice_app.screen.HomeScreen
 import com.example.practice_app.screen.LoginScreen
 import com.example.practice_app.screen.SignUpScreen
@@ -76,6 +80,21 @@ fun HomeNavigation(viewModel: UserViewModel, startDestination: String) {
         composable("home_screen") {
             // Call the HomeScreen composable function with the navController and viewModel
             HomeScreen(navController, viewModel)
+        }
+
+        composable(NavRoutes.Anime.route)
+        {
+            AnimeComposable()
+        }
+
+        composable(NavRoutes.ArtWork.route)
+        {
+            ArtWorkComposable()
+        }
+
+        composable(NavRoutes.CommingSoon.route)
+        {
+            CommingSoonComposable()
         }
     }
 }

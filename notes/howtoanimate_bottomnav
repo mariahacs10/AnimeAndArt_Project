@@ -1,0 +1,57 @@
+6/26/2024
+
+Heres the steps on how to animate the bottom navigation to become more smoother
+
+1.Enhance the BottomNavigationBar:
+
+// Bottom navigation bar composable
+@OptIn(ExperimentalPagerApi::class)
+@Composable
+fun BottomNavigationBar(pagerState: PagerState, scope: CoroutineScope) {
+    NavigationBar {
+        NavBarItems.BarItems.forEachIndexed { index, navItem ->
+            NavigationBarItem(
+                selected = pagerState.currentPage == index,
+                onClick = {
+                    scope.launch {
+                        // Use animateScrollToPage with a custom animation spec
+                        tween<Float>(
+                            durationMillis = 3000,
+                            easing = EaseInOutCubic
+                        )
+                        pagerState.animateScrollToPage(
+                            page = index
+                        )
+                    }
+                },
+                icon = {
+                    // Add transition animation for icon
+                    val transition = updateTransition(pagerState.currentPage == index, label = "iconTransition")
+                    val iconSize by transition.animateFloat(
+                        label = "iconSize",
+                        transitionSpec = { tween(3000) }
+                    ) { selected -> if (selected) 28f else 24f }
+
+                    Image(
+                        modifier = Modifier.size(iconSize.dp),
+                        painter = painterResource(id = navItem.image),
+                        contentDescription = navItem.title
+                    )
+                },
+                label = {
+                    Text(
+                        text = navItem.title,
+                        // Add transition animation for text
+                        modifier = Modifier.graphicsLayer {
+                            alpha = if (pagerState.currentPage == index) 1f else 0.6f
+                            scaleX = if (pagerState.currentPage == index) 1.1f else 1f
+                            scaleY = if (pagerState.currentPage == index) 1.1f else 1f
+                        }
+                    )
+                },
+            )
+        }
+    }
+}
+
+And thats it you dont have to make changes in the MainScreen or anything.
