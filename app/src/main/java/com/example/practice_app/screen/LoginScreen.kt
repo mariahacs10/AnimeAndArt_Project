@@ -1,6 +1,10 @@
 package com.example.practice_app.screen
 
+import android.app.Activity
+import android.content.Context
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,7 +12,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,8 +39,16 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.practice_app.MainActivity
 import com.example.practice_app.R
 import com.example.practice_app.models.UserViewModel
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.tasks.Task
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 // Opt-in to the ExperimentalMaterial3Api annotation
@@ -157,10 +172,41 @@ fun LoginScreen(navController: NavController, viewModel: UserViewModel) {
             // Add a vertical space of 16dp
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Create a Button for the sign in with Google action
+
+            val gso = remember {
+                GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                    .requestEmail()
+                    .build()
+            }
+
+
+            val signInLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) { result ->
+                if (result.resultCode == Activity.RESULT_OK) {
+                    try {
+                        viewModel.loginWithGoogle()
+                        navController.navigate("home_screen") {
+                            popUpTo("login_screen") { inclusive = true }
+                        }
+                    } catch (e: ApiException) {
+                        Toast.makeText(context, "Google sign in failed", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            val googleSignInClient = remember {
+                GoogleSignIn.getClient(context, gso)
+            }
+            // Google sign-in button
             Button(onClick = {
-                // Handle sign in with Google action here if needed
+                val intent = googleSignInClient.signInIntent
+                signInLauncher.launch(intent)
             }) {
+                // Google icon
+                Icon(
+                    painter = painterResource(id = R.drawable.googleicon),
+                    contentDescription = "Google",
+                    modifier = Modifier.size(ButtonDefaults.IconSize)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
                 Text(text = "Sign in with Google")
             }
 

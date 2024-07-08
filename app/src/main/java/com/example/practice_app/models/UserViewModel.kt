@@ -3,6 +3,7 @@ package com.example.practice_app.models
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.example.practice_app.db.User
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 
 // Declare the UserViewModel class that extends ViewModel
 class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
@@ -21,6 +22,21 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
         username.value = ""
         password.value = ""
         confirmPassword.value = ""
+    }
+
+    //Gooogle sign in method for saving  login state
+    fun loginWithGoogle() {
+        userRepository.saveLoginState(true, isGoogleSignIn = true)
+    }
+
+    //gettingg the google sign in information
+    fun isGoogleSignIn(): Boolean {
+        return userRepository.isGoogleSignIn()
+    }
+
+    //loggingg out the user from google sign in
+    fun logoutUserGoogle() {
+        userRepository.saveLoginState(false, false)
     }
 
     // Declare a suspend function for logging in a user

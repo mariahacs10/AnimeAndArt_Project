@@ -45,15 +45,20 @@ class UserRepository(context: Context) {
     // Get an instance of SharedPreferences with the name "MyPrefs" and private mode
     private val sharedPreferences: SharedPreferences = context.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
 
-    // Declare a function for saving the login state in SharedPreferences
-    fun saveLoginState(isLoggedIn: Boolean) {
-        // Edit the SharedPreferences and put the isLoggedIn value as a boolean
-        sharedPreferences.edit().putBoolean("isLoggedIn", isLoggedIn).apply()
+    fun saveLoginState(isLoggedIn: Boolean, isGoogleSignIn: Boolean = false) {
+        sharedPreferences.edit()
+            .putBoolean("isLoggedIn", isLoggedIn)
+            //adding googlesign in into googlesign in
+            .putBoolean("isGoogleSignIn", isGoogleSignIn)
+            .apply()
     }
 
-    // Declare a function for checking if the user is logged in using SharedPreferences
     fun isUserLoggedIn(): Boolean {
-        // Retrieve the isLoggedIn value from SharedPreferences, defaulting to false if not found
         return sharedPreferences.getBoolean("isLoggedIn", false)
+    }
+
+    //adding google signin to save logifc
+    fun isGoogleSignIn(): Boolean {
+        return sharedPreferences.getBoolean("isGoogleSignIn", false)
     }
 }

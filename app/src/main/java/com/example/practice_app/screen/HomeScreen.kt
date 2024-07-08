@@ -9,7 +9,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.EaseInOutCubic
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
@@ -75,16 +74,21 @@ import coil.compose.rememberAsyncImagePainter
 import coil.imageLoader
 import coil.request.ImageRequest
 import com.example.practice_app.R
+import com.example.practice_app.db.User
+import com.example.practice_app.db.UserManager
 import com.example.practice_app.models.UserViewModel
 import com.example.practice_app.navigation.NavBarItems
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.PagerState
 import com.google.accompanist.pager.rememberPagerState
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.IOException
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -98,15 +102,42 @@ fun HomeScreen(navController: NavController, viewModel: UserViewModel) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     // Declares a variable 'isVisible' that triggers recomposition when changed
     val isVisible by remember { mutableStateOf(true) }
+    val context = LocalContext.current
+    val account = GoogleSignIn.getLastSignedInAccount(context)
+
+    val gso by lazy {
+        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            //This line adds a request to retrieve the user's email
+            // address during the sign-in process.
+            .requestEmail()
+            //This line builds and returns the final GoogleSignInOptions
+            // object based on the configured options.
+            .build()
+    }
+    val googleSignInClient by lazy {
+        GoogleSignIn.getClient(context, gso)
+    }
+
+    val user = remember {
+        account?.let { googleAccount ->
+            // Map Google account to User
+            User(
+                id = null,
+                username = googleAccount.displayName!!,
+                password = null,
+                confirmPassword = null
+            )
+        }
+    }
 
 
     LaunchedEffect(Unit) {
         coroutineScope.launch {
             // Calls a suspend function to get the logged-in user
-            val user = viewModel.getLoggedInUser()
-            if (user != null) {
+            val user2 = viewModel.getLoggedInUser()
+            if (user2 != null) {
                 // Sets the 'username' variable with the logged-in user's username
-                username = user.username
+                username = user2.username
             }
         }
     }
@@ -151,9 +182,13 @@ fun HomeScreen(navController: NavController, viewModel: UserViewModel) {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         // Composable function to display user profile image
-                        ProfileImage(username)
-                        // Text composable for displaying username
-                        Text(username, style = TextStyle(fontSize = 20.sp, color = Color.White))
+                        if (account != null) {
+                            ProfileImage(username)
+                            Text("${user?.username}", style = TextStyle(fontSize = 20.sp, color = Color.White))
+                        } else {
+                            ProfileImage(username)
+                            Text(text = "${UserManager.user?.username}", style = TextStyle(fontSize = 20.sp, color = Color.White))
+                        }
                     }
 
                     // Divider composable
@@ -170,12 +205,22 @@ fun HomeScreen(navController: NavController, viewModel: UserViewModel) {
                         // Click listener for logout action
                         onClick = {
                             coroutineScope.launch {
-                                // Calls a suspend function to logout user
-                                viewModel.logoutUser(username)
-                                // Navigates to login screen
-                                navController.navigate("login_screen") {
-                                    // Clears the back stack up to home_screen
-                                    popUpTo("home_screen") { inclusive = true }
+                                if (viewModel.isGoogleSignIn()) {
+                                    googleSignInClient.signOut()
+                                        .addOnCompleteListener {
+                                            viewModel.logoutUserGoogle()
+                                            navController.navigate("login_screen") {
+                                                popUpTo("home_screen") { inclusive = true }
+                                            }
+                                        }
+                                        .addOnFailureListener {
+                                            Log.e("SignOut", "Failed to sign out: ${it.message}")
+                                        }
+                                } else {
+                                    viewModel.logoutUser(username)
+                                    navController.navigate("login_screen") {
+                                        popUpTo("home_screen") { inclusive = true }
+                                    }
                                 }
                             }
                         }

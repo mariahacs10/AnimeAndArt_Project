@@ -18,9 +18,13 @@ import com.example.practice_app.screen.CommingSoonComposable
 import com.example.practice_app.screen.HomeScreen
 import com.example.practice_app.screen.LoginScreen
 import com.example.practice_app.screen.SignUpScreen
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -36,11 +40,16 @@ class MainActivity : ComponentActivity() {
 
         // Set the content of the activity using a composable function
         setContent {
-            // Check if the user is logged in using the repository
+            //add a check for Google Sign-In state
             val isUserLoggedIn = repository.isUserLoggedIn()
-            // Determine the start destination based on the login state
-            val startDestination = if (isUserLoggedIn) "home_screen" else "login_screen"
-            // Call the HomeNavigation composable function with the viewModel and startDestination
+            val googleAccount = GoogleSignIn.getLastSignedInAccount(this)
+
+            val startDestination = when {
+                isUserLoggedIn -> "home_screen"
+                googleAccount != null -> "home_screen"
+                else -> "login_screen"
+            }
+
             HomeNavigation(viewModel, startDestination)
         }
     }

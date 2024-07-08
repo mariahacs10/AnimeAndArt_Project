@@ -1,0 +1,167 @@
+7/8/2024
+Problems i had:
+
+1.Troubles with persisting google sign in
+-------------------------------------------
+
+Things i learned in my project
+
+1. Login Token Functionality:
+    I discovered that a login token isn't strictly necessary for maintaining the app's UI login state. However,
+     it proves valuable in several scenarios:
+
+    a) Security: Enhances authentication when communicating with a backend server.
+    b) Token Expiration: Necessary for managing Google Sign-In token expiration and refresh.
+
+ 2. Data Storage Considerations:
+    Initially, I considered using encrypted shared preferences for storing login information. However,
+    I learned that standard shared preferences are sufficient in this case. We're only storing a boolean flag indicating whether
+    Google Sign-In was used, not any sensitive account data.
+
+    Google Sign-In handles the secure storage and management of tokens internally, eliminating the need for additional encryption on our part.
+
+-------------------------------------------
+
+Here are the Step by Steps on how to persist google signin:
+
+Step 1.In your MainActivity, add a check for Google Sign-In state:
+
+class MainActivity : ComponentActivity() {
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        // Create an instance of the UserRepository
+        val repository = UserRepository(applicationContext)
+
+        // Create a ViewModelFactory to provide the repository to the ViewModel
+        val viewModelFactory = UserViewModelFactory(repository)
+
+        // Obtain the UserViewModel instance using the ViewModelProvider
+        val viewModel = ViewModelProvider(this, viewModelFactory)
+            .get(UserViewModel::class.java)
+
+        // Set the content of the activity using a composable function
+        setContent {
+            val isUserLoggedIn = repository.isUserLoggedIn()
+            val googleAccount = GoogleSignIn.getLastSignedInAccount(this)
+
+            val startDestination = when {
+                isUserLoggedIn -> "home_screen"
+                googleAccount != null -> "home_screen"
+                else -> "login_screen"
+            }
+
+            HomeNavigation(viewModel, startDestination)
+        }
+    }
+}
+
+Step 2.Modify your UserRepository to include Google Sign-In state:
+// Get an instance of SharedPreferences with the name "MyPrefs" and private mode
+    private val sharedPreferences: SharedPreferences = context.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
+
+    fun saveLoginState(isLoggedIn: Boolean, isGoogleSignIn: Boolean = false) {
+        sharedPreferences.edit()
+            .putBoolean("isLoggedIn", isLoggedIn)
+            .putBoolean("isGoogleSignIn", isGoogleSignIn)
+            .apply()
+    }
+
+    fun isUserLoggedIn(): Boolean {
+        return sharedPreferences.getBoolean("isLoggedIn", false)
+    }
+
+    fun isGoogleSignIn(): Boolean {
+        return sharedPreferences.getBoolean("isGoogleSignIn", false)
+    }
+}
+
+Step 3.Update your LoginScreen to save Google Sign-In state:
+
+val gso = remember {
+      GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestEmail()
+             .build()
+}
+
+val signInLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) { result ->
+     if (result.resultCode == Activity.RESULT_OK) {
+         try {
+                viewModel.loginWithGoogle()
+                navController.navigate("home_screen") {
+                      popUpTo("login_screen") { inclusive = true }
+                }
+            } catch (e: ApiException) {
+                Toast.makeText(context, "Google sign in failed", Toast.LENGTH_SHORT).show()
+            }
+         }
+     }
+     val googleSignInClient = remember {
+           GoogleSignIn.getClient(context, gso)
+     }
+     // Google sign-in button
+     Button(onClick = {
+         val intent = googleSignInClient.signInIntent
+         signInLauncher.launch(intent)
+     }) {
+          // Google icon
+          Icon(
+             painter = painterResource(id = R.drawable.googleicon),
+             contentDescription = "Google",
+             modifier = Modifier.size(ButtonDefaults.IconSize)
+          )
+          Spacer(modifier = Modifier.width(4.dp))
+          Text(text = "Sign in with Google")
+      }
+
+Step 4.Add a method to UserViewModel to handle Google Sign-In:
+fun loginWithGoogle() {
+        userRepository.saveLoginState(true, isGoogleSignIn = true)
+        // You might want to save more user information here
+    }
+
+    fun isGoogleSignIn(): Boolean {
+        return userRepository.isGoogleSignIn()
+    }
+
+    fun logoutUserGoogle() {
+        userRepository.saveLoginState(false, false)
+    }
+
+Step 5.Update your HomeScreen to handle Google Sign-Out:
+
+ // Custom composable item for navigation drawer
+                    NavigationDrawerItem(
+                        // Text label for logout
+                        label = { Text(text = "Logout", color = Color.Black) },
+                        // Indicates if the item is selected
+                        selected = false,
+                        // Icon for logout
+                        icon = { Icon(Icons.Filled.ExitToApp, contentDescription = "Logout") },
+                        // Click listener for logout action
+                        onClick = {
+                            coroutineScope.launch {
+                                if (viewModel.isGoogleSignIn()) {
+                                    googleSignInClient.signOut()
+                                        .addOnCompleteListener {
+                                            viewModel.logoutUserGoogle()
+                                            navController.navigate("login_screen") {
+                                                popUpTo("home_screen") { inclusive = true }
+                                            }
+                                        }
+                                        .addOnFailureListener {
+                                            Log.e("SignOut", "Failed to sign out: ${it.message}")
+                                        }
+                                } else {
+                                    viewModel.logoutUser(username)
+                                    navController.navigate("login_screen") {
+                                        popUpTo("home_screen") { inclusive = true }
+                                    }
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+        }
