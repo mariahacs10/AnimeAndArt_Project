@@ -1,0 +1,71 @@
+7/9/2024
+
+Problem: when i logined in using android login i see my profile picture but the name says null.
+
+Solution: the issue is in how the username is being retrieved and displayed for Android login
+compared to Google sign-in.
+
+Step by Steps:
+
+1.In the HomeScreen composable, update the user information display:
+
+if (account != null) {
+    ProfileImage(username)
+    Text("${user?.username}", style = TextStyle(fontSize = 20.sp, color = Color.White))
+} else {
+    ProfileImage(username)
+    Text(text = username, style = TextStyle(fontSize = 20.sp, color = Color.White))
+}
+
+2.In the HomeScreen, update the LaunchedEffect block:
+
+LaunchedEffect(Unit) {
+    coroutineScope.launch {
+        val user2 = viewModel.getLoggedInUser()
+        if (user2 != null) {
+            username = user2.username ?: ""
+            viewModel.username.value = username
+        }
+    }
+}
+
+3.In the UserRepository, update the saveLoginState function:
+
+fun saveLoginState(isLoggedIn: Boolean, isGoogleSignIn: Boolean = false, username: String = "") {
+    sharedPreferences.edit()
+        .putBoolean("isLoggedIn", isLoggedIn)
+        .putBoolean("isGoogleSignIn", isGoogleSignIn)
+        .putString("loggedInUsername", username)
+        .apply()
+}
+
+4.In the UserViewModel, update the loginUser function
+
+suspend fun loginUser(username: String) {
+    val user = userRepository.getUser(username)
+    if (user != null) {
+        userRepository.updateLoginStatus(username, true)
+        userRepository.saveLoginState(true, false, username)
+        this.username.value = username
+    }
+}
+
+5.In the UserRepository, add a function to get the logged-in username:
+
+fun getLoggedInUsername(): String {
+    return sharedPreferences.getString("loggedInUsername", "") ?: ""
+}
+
+6.In the UserViewModel, add a function to get the logged-in username:
+
+fun getLoggedInUsername(): String {
+    return userRepository.getLoggedInUsername()
+}
+
+7.Finally, in the HomeScreen, update the initial username value:
+
+var username by remember { mutableStateOf(viewModel.getLoggedInUsername()) }
+
+These changes should ensure that the username is properly stored and retrieved for both
+Google sign-in and Android login. The username will be saved in SharedPreferences when
+logging in and retrieved when displaying the HomeScreen.

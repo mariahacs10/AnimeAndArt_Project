@@ -95,7 +95,7 @@ import java.io.IOException
 @Composable
 fun HomeScreen(navController: NavController, viewModel: UserViewModel) {
     // Declares a variable 'username' that triggers recomposition when changed
-    var username by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf(viewModel.getLoggedInUsername()) }
     // Remembers a coroutine scope to launch coroutines
     val coroutineScope = rememberCoroutineScope()
     // Remembers the state of a drawer (open or closed)
@@ -130,14 +130,12 @@ fun HomeScreen(navController: NavController, viewModel: UserViewModel) {
         }
     }
 
-
     LaunchedEffect(Unit) {
         coroutineScope.launch {
-            // Calls a suspend function to get the logged-in user
             val user2 = viewModel.getLoggedInUser()
             if (user2 != null) {
-                // Sets the 'username' variable with the logged-in user's username
-                username = user2.username
+                username = user2.username ?: ""
+                viewModel.username.value = username
             }
         }
     }
@@ -181,13 +179,12 @@ fun HomeScreen(navController: NavController, viewModel: UserViewModel) {
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Composable function to display user profile image
                         if (account != null) {
                             ProfileImage(username)
                             Text("${user?.username}", style = TextStyle(fontSize = 20.sp, color = Color.White))
                         } else {
                             ProfileImage(username)
-                            Text(text = "${UserManager.user?.username}", style = TextStyle(fontSize = 20.sp, color = Color.White))
+                            Text(text = username, style = TextStyle(fontSize = 20.sp, color = Color.White))
                         }
                     }
 

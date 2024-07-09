@@ -24,6 +24,11 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
         confirmPassword.value = ""
     }
 
+
+    fun getLoggedInUsername(): String {
+        return userRepository.getLoggedInUsername()
+    }
+
     //Gooogle sign in method for saving  login state
     fun loginWithGoogle() {
         userRepository.saveLoginState(true, isGoogleSignIn = true)
@@ -41,14 +46,15 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
 
     // Declare a suspend function for logging in a user
     suspend fun loginUser(username: String) {
-        // Get the user from the user repository based on the provided username
         val user = userRepository.getUser(username)
-        // Check if the user exists (not null)
         if (user != null) {
-            // Update the login status of the user to true in the user repository
             userRepository.updateLoginStatus(username, true)
-            // Save the login state as true in the user repository
-            userRepository.saveLoginState(true)
+            userRepository.saveLoginState(
+                isLoggedIn = true,
+                isGoogleSignIn = false,
+                username = username
+            )
+            this.username.value = username
         }
     }
 
