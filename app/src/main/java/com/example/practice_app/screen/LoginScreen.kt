@@ -2,6 +2,7 @@ package com.example.practice_app.screen
 
 import android.app.Activity
 import android.content.Context
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -178,7 +179,6 @@ fun LoginScreen(navController: NavController, viewModel: UserViewModel) {
                     .requestEmail()
                     .build()
             }
-
 
             val signInLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) { result ->
                 if (result.resultCode == Activity.RESULT_OK) {

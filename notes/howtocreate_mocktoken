@@ -1,0 +1,82 @@
+7/18/2024
+
+What is the mock token used for?:
+
+This is used for testing purposes so i can test the mock token is getting sent correctly to the
+server aka postman
+-----------------------------------------------------------------------------------------------
+
+Heres how you create a mock token
+
+Step 1.First, add the Retrofit dependency to your build.gradle file if you haven't already:
+
+//Retrofit
+implementation ("com.squareup.retrofit2:retrofit:2.9.0")
+implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
+implementation ("com.google.code.gson:gson:2.8.8")
+
+Step 2.Create an ApiService interface:
+
+interface ApiService {
+    @GET("get")
+    suspend fun verifyToken(@Header("Authorization") token: String): Response<Map<String, Any>>
+}
+
+Step 3.Create a Retrofit instance in your application:
+
+object RetrofitInstance {
+    private const val BASE_URL = "https://2806066a-8784-47ee-9a68-f2732d7842d8.mock.pstmn.io"
+
+    val apiService: ApiService by lazy {
+        Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(ApiService::class.java)
+    }
+}
+
+Step 4.Add a function to verify the mock token in your UserViewModel:
+
+ private val apiService = RetrofitInstance.apiService
+
+    suspend fun verifyMockToken() {
+        val mockToken = "MOCK_GOOGLE_AUTH_TOKEN_FOR_TESTING_123"
+        try {
+            val response = apiService.verifyToken("Bearer $mockToken")
+            if (response.isSuccessful) {
+                val headers = response.body()?.get("headers") as? Map<*, *>
+                val receivedToken = headers?.get("authorization") as? String
+                if (receivedToken == "Bearer $mockToken") {
+                    Log.d("TokenVerification", "Mock token sent and verified successfully!")
+                } else {
+                    Log.e("TokenVerification", "Token mismatch or not found in response")
+                }
+            } else {
+                Log.e("TokenVerification", "Request failed: ${response.errorBody()?.string()}")
+            }
+        } catch (e: Exception) {
+            Log.e("TokenVerification", "Error verifying token", e)
+        }
+    }
+
+Step 5.Modify your login user in the userviewmodel to call the verifyMockToken function after a successful login
+and then when you type on the login it will send the request:
+
+suspend fun loginUser(username: String) {
+        val user = userRepository.getUser(username)
+        if (user != null) {
+            userRepository.updateLoginStatus(username, true)
+            userRepository.saveLoginState(
+                isLoggedIn = true,
+                isGoogleSignIn = false,
+                username = username
+            )
+            this.username.value = username
+        }
+        verifyMockToken()
+    }
+
+
+
+

@@ -1,9 +1,15 @@
 package com.example.practice_app.models
 
+import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.practice_app.db.RetrofitInstance
 import com.example.practice_app.db.User
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 // Declare the UserViewModel class that extends ViewModel
 class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
@@ -11,6 +17,31 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
     var username = mutableStateOf("")
     var password = mutableStateOf("")
     var confirmPassword = mutableStateOf("")
+    private val apiService = RetrofitInstance.apiService
+
+    //This method simulates sending a mock token to a
+    // backend API and verifying its validity.
+    //It's  used for testing purposes to ensure your token
+    // verification logic works as expected.
+    suspend fun verifyMockToken() {
+        val mockToken = "MOCK_GOOGLE_AUTH_TOKEN_FOR_TESTING_123"
+        try {
+            val response = apiService.verifyToken("Bearer $mockToken")
+            if (response.isSuccessful) {
+                val headers = response.body()?.get("headers") as? Map<*, *>
+                val receivedToken = headers?.get("authorization") as? String
+                if (receivedToken == "Bearer $mockToken") {
+                    Log.d("TokenVerification", "Mock token sent and verified successfully!")
+                } else {
+                    Log.e("TokenVerification", "Token mismatch or not found in response")
+                }
+            } else {
+                Log.e("TokenVerification", "Request failed: ${response.errorBody()?.string()}")
+            }
+        } catch (e: Exception) {
+            Log.e("TokenVerification", "Error verifying token", e)
+        }
+    }
 
     // Declare a suspend function for handling the sign-up click event
     suspend fun onSignUpClick() {
@@ -23,7 +54,6 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
         password.value = ""
         confirmPassword.value = ""
     }
-
 
     fun getLoggedInUsername(): String {
         return userRepository.getLoggedInUsername()
@@ -56,7 +86,10 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
             )
             this.username.value = username
         }
+        verifyMockToken()
     }
+
+
 
     // Declare a suspend function for logging out a user
     suspend fun logoutUser(username: String) {

@@ -6,6 +6,7 @@ import com.example.practice_app.db.AppDatabase
 import com.example.practice_app.db.User
 
 // Declare the UserRepository class with a context parameter
+// Declare the UserRepository class with a context parameter
 class UserRepository(context: Context) {
     // Get an instance of the AppDatabase using the provided context
     private val db = AppDatabase.getDatabase(context)

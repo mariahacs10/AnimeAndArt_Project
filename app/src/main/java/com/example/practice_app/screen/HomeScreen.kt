@@ -123,7 +123,7 @@ fun HomeScreen(navController: NavController, viewModel: UserViewModel) {
             // Map Google account to User
             User(
                 id = null,
-                username = googleAccount.displayName!!,
+                username = googleAccount.givenName!!,
                 password = null,
                 confirmPassword = null
             )
