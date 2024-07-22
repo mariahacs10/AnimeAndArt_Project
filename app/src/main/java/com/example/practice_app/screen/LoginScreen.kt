@@ -159,7 +159,7 @@ fun LoginScreen(navController: NavController, viewModel: UserViewModel) {
                     // If the username and password match
                     else {
                         // Log in the user using the viewModel
-                        viewModel.loginUser(username)
+                        viewModel.loginWithCredentials(username,password)
                         // Navigate to the home screen and pop up to the login screen (inclusive)
                         navController.navigate("home_screen") {
                             popUpTo("login_screen") { inclusive = true }

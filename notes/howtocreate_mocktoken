@@ -1,5 +1,9 @@
 7/18/2024
 
+Also i got a null error when i extracted the username from google sign in we will look deeper into this because
+it sholdn't have effected it, we will try posting it to postman to check it.
+--------------------------------------------------------------------------------------------------------------
+
 What is the mock token used for?:
 
 This is used for testing purposes so i can test the mock token is getting sent correctly to the

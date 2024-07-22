@@ -133,10 +133,7 @@ fun HomeScreen(navController: NavController, viewModel: UserViewModel) {
     LaunchedEffect(Unit) {
         coroutineScope.launch {
             val user2 = viewModel.getLoggedInUser()
-            if (user2 != null) {
-                username = user2.username ?: ""
-                viewModel.username.value = username
-            }
+            username = user2?.username ?: ""
         }
     }
 

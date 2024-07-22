@@ -2,7 +2,10 @@ package com.example.practice_app.models
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.example.practice_app.db.ApiService
 import com.example.practice_app.db.AppDatabase
+import com.example.practice_app.db.LoginRequest
+import com.example.practice_app.db.RetrofitClient
 import com.example.practice_app.db.User
 
 // Declare the UserRepository class with a context parameter
@@ -66,5 +69,31 @@ class UserRepository(context: Context) {
     //adding google signin to save logifc
     fun isGoogleSignIn(): Boolean {
         return sharedPreferences.getBoolean("isGoogleSignIn", false)
+    }
+
+    private val apiService: ApiService = RetrofitClient.createApiService()
+
+    suspend fun loginUser(username: String, password: String): Boolean {
+        // Check if it's a local login (no password provided)
+        if (password.isEmpty()) {
+            val user = getUser(username)
+            if (user != null) {
+                updateLoginStatus(username, true)
+                saveLoginState(true, username = username)
+                return true
+            }
+        } else {
+            val response = apiService.login(LoginRequest(username, password))
+
+            // API login using Retrofit (assuming username and password are valid for the API)
+            // ... (your existing logic for loginWithCredentials can be placed here)
+            // Update login status and shared preferences if login is successful
+            if(response.isSuccessful) {
+                updateLoginStatus(username, true)
+                saveLoginState(true, username = username)
+                return true
+            }
+        }
+        return false
     }
 }

@@ -1,15 +1,9 @@
 package com.example.practice_app.models
 
-import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.example.practice_app.db.RetrofitInstance
 import com.example.practice_app.db.User
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
+import com.example.practice_app.db.UserManager.user
 
 // Declare the UserViewModel class that extends ViewModel
 class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
@@ -17,31 +11,6 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
     var username = mutableStateOf("")
     var password = mutableStateOf("")
     var confirmPassword = mutableStateOf("")
-    private val apiService = RetrofitInstance.apiService
-
-    //This method simulates sending a mock token to a
-    // backend API and verifying its validity.
-    //It's  used for testing purposes to ensure your token
-    // verification logic works as expected.
-    suspend fun verifyMockToken() {
-        val mockToken = "MOCK_GOOGLE_AUTH_TOKEN_FOR_TESTING_123"
-        try {
-            val response = apiService.verifyToken("Bearer $mockToken")
-            if (response.isSuccessful) {
-                val headers = response.body()?.get("headers") as? Map<*, *>
-                val receivedToken = headers?.get("authorization") as? String
-                if (receivedToken == "Bearer $mockToken") {
-                    Log.d("TokenVerification", "Mock token sent and verified successfully!")
-                } else {
-                    Log.e("TokenVerification", "Token mismatch or not found in response")
-                }
-            } else {
-                Log.e("TokenVerification", "Request failed: ${response.errorBody()?.string()}")
-            }
-        } catch (e: Exception) {
-            Log.e("TokenVerification", "Error verifying token", e)
-        }
-    }
 
     // Declare a suspend function for handling the sign-up click event
     suspend fun onSignUpClick() {
@@ -75,21 +44,19 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
     }
 
     // Declare a suspend function for logging in a user
-    suspend fun loginUser(username: String) {
-        val user = userRepository.getUser(username)
-        if (user != null) {
-            userRepository.updateLoginStatus(username, true)
-            userRepository.saveLoginState(
-                isLoggedIn = true,
-                isGoogleSignIn = false,
-                username = username
-            )
-            this.username.value = username
-        }
-        verifyMockToken()
-    }
-
-
+//    suspend fun loginUser(username: String) {
+//        val user = userRepository.getUser(username)
+//        if (user != null) {
+//            userRepository.updateLoginStatus(username, true)
+//            userRepository.saveLoginState(
+//                isLoggedIn = true,
+//                isGoogleSignIn = false,
+//                username = username
+//            )
+//            this.username.value = username
+//        }
+//    }
+//
 
     // Declare a suspend function for logging out a user
     suspend fun logoutUser(username: String) {
@@ -111,6 +78,14 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
         val user = userRepository.getUser(inputUsername)
         // Return the username of the user if it exists, otherwise return null
         return user?.username
+    }
+
+    //your going to login and its going to take you
+    //to android and also post to postman
+    suspend fun loginWithCredentials(username: String, password: String): Boolean {
+
+        return userRepository.loginUser(username, password)
+
     }
 
     // Declare a suspend function for getting the password based on the input username
