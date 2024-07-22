@@ -1,0 +1,41 @@
+i had 2 seperate logins one for postman and one for android login and i needed to only have one
+now once i login it sends it to android and you can see it in the side drawer
+and it gets sent to postman, where you can see the username and password.
+
+Heres how i fixed it
+
+1.Remove the loginWithCredentials function: This function is specifically designed for
+the API call using Retrofit.
+
+2.Modify the loginUser function to handle both local and API logins:
+
+ suspend fun loginUser(username: String, password: String): Boolean {
+        // Check if it's a local login (no password provided)
+        if (password.isEmpty()) {
+            val user = getUser(username)
+            if (user != null) {
+                updateLoginStatus(username, true)
+                saveLoginState(true, username = username)
+                return true
+            }
+        } else {
+            val response = apiService.login(LoginRequest(username, password))
+
+            // API login using Retrofit (assuming username and password are valid for the API)
+            // ... (your existing logic for loginWithCredentials can be placed here)
+            // Update login status and shared preferences if login is successful
+            if(response.isSuccessful) {
+                updateLoginStatus(username, true)
+                saveLoginState(true, username = username)
+                return true
+            }
+        }
+        return false
+    }
+
+3.Modify your userviewmodel:
+ suspend fun loginWithCredentials(username: String, password: String): Boolean {
+
+        return userRepository.loginUser(username, password)
+
+    }
