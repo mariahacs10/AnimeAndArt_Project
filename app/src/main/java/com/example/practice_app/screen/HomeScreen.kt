@@ -75,7 +75,6 @@ import coil.imageLoader
 import coil.request.ImageRequest
 import com.example.practice_app.R
 import com.example.practice_app.db.User
-import com.example.practice_app.db.UserManager
 import com.example.practice_app.models.UserViewModel
 import com.example.practice_app.navigation.NavBarItems
 import com.google.accompanist.pager.ExperimentalPagerApi
@@ -132,8 +131,7 @@ fun HomeScreen(navController: NavController, viewModel: UserViewModel) {
 
     LaunchedEffect(Unit) {
         coroutineScope.launch {
-            val user2 = viewModel.getLoggedInUser()
-            username = user2?.username ?: ""
+            viewModel.getLoggedInUser()
         }
     }
 
@@ -181,7 +179,7 @@ fun HomeScreen(navController: NavController, viewModel: UserViewModel) {
                             Text("${user?.username}", style = TextStyle(fontSize = 20.sp, color = Color.White))
                         } else {
                             ProfileImage(username)
-                            Text(text = username, style = TextStyle(fontSize = 20.sp, color = Color.White))
+                            Text(text = viewModel.username.value, style = TextStyle(fontSize = 20.sp, color = Color.White))
                         }
                     }
 

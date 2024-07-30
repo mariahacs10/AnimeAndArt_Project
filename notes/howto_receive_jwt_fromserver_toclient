@@ -1,0 +1,182 @@
+7/28/2024
+
+To integrate JWT-based authentication from your Spring Boot backend into your Android client application, you need to handle the process of receiving
+the JWT token from the backend and storing it securely on the client side. Here's a detailed guide on how to do it:
+
+Step 1.API Service, Update your ApiService interface to handle the login endpoint correctly.
+
+interface ApiService {
+    @POST("api/auth/login")
+    suspend fun login(@Body loginRequest: LoginRequest): Response<LoginResponse>
+}
+data class LoginRequest(val username: String, val password: String)
+
+data class LoginResponse(val token: String)
+
+Step 2.Retrofit Client,Ensure the RetrofitClient is properly set up
+
+Step 3.UserRepository, Update the UserRepository to handle the login response and store the JWT token.
+
+  private val sharedPreferences: SharedPreferences = context.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
+
+    fun saveLoginState(isLoggedIn: Boolean, isGoogleSignIn: Boolean = false, username: String = "") {
+        sharedPreferences.edit()
+            .putBoolean("isLoggedIn", isLoggedIn)
+            .putBoolean("isGoogleSignIn", isGoogleSignIn)
+            .putString("loggedInUsername", username)
+            .apply()
+    }
+
+    fun saveToken(token: String) {
+        sharedPreferences.edit().putString("jwt_token", token).apply()
+    }
+
+    fun getToken(): String? {
+        return sharedPreferences.getString("jwt_token", null)
+    }
+
+    fun getLoggedInUsername(): String {
+        return sharedPreferences.getString("loggedInUsername", "") ?: ""
+    }
+
+    fun isUserLoggedIn(): Boolean {
+        return sharedPreferences.getBoolean("isLoggedIn", false)
+    }
+
+    fun isGoogleSignIn(): Boolean {
+        return sharedPreferences.getBoolean("isGoogleSignIn", false)
+    }
+
+    private val apiService: ApiService = RetrofitClient.createApiService()
+
+    suspend fun signupUser(username: String, password: String, confirmPassword: String): Boolean {
+        try {
+            val response = apiService.signup(SignupRequest(username, password))
+            if (response.isSuccessful) {
+                insert(User(username = username, password = password, confirmPassword = confirmPassword))
+                return true
+            }
+        } catch (e: Exception) {
+            Log.e("UserRepository", "Error during signup", e)
+        }
+        return false
+    }
+
+    suspend fun loginUser(username: String, password: String): Boolean {
+        try {
+            val response = apiService.login(LoginRequest(username, password))
+            if (response.isSuccessful && response.body() != null) {
+                val token = response.body()!!.token
+                saveToken(token)
+                updateLoginStatus(username, true)
+                saveLoginState(true, false, username)
+                return true
+            }
+        } catch (e: Exception) {
+            Log.e("UserRepository", "Error during login", e)
+        }
+        return false
+    }
+
+Step 4.UserViewModel Update the UserViewModel to call the login function from the repository and navigate based on success.
+
+package com.example.practice_app.models
+
+import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.practice_app.db.User
+import kotlinx.coroutines.launch
+
+class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
+    var username = mutableStateOf("")
+    var password = mutableStateOf("")
+    var confirmPassword = mutableStateOf("")
+
+    suspend fun onSignUpClick() {
+        val user = User(username = username.value, password = password.value, confirmPassword = confirmPassword.value)
+        userRepository.insert(user)
+        username.value = ""
+        password.value = ""
+        confirmPassword.value = ""
+    }
+
+    suspend fun signupUser(username: String, password: String, confirmPassword: String): Boolean {
+        return userRepository.signupUser(username, password, confirmPassword)
+    }
+
+    fun getLoggedInUsername(): String {
+        return userRepository.getLoggedInUsername()
+    }
+
+    fun loginWithGoogle() {
+        userRepository.saveLoginState(true, isGoogleSignIn = true)
+    }
+
+    fun isGoogleSignIn(): Boolean {
+        return userRepository.isGoogleSignIn()
+    }
+
+    fun logoutUserGoogle() {
+        userRepository.saveLoginState(false, false)
+    }
+
+    fun logoutUser(username: String) {
+        viewModelScope.launch {
+            userRepository.updateLoginStatus(username, false)
+            userRepository.saveLoginState(false)
+        }
+    }
+
+    fun getLoggedInUser() {
+        viewModelScope.launch {
+            val user = userRepository.getLoggedInUser()
+            user?.let {
+                username.value = it.username ?: ""
+            }
+        }
+    }
+
+    suspend fun getUsername(inputUsername: String): String? {
+        val user = userRepository.getUser(inputUsername)
+        return user?.username
+    }
+
+    suspend fun loginWithCredentials(username: String, password: String): Boolean {
+        return userRepository.loginUser(username, password)
+    }
+
+    suspend fun getPassword(inputUsername: String): String? {
+        val user = userRepository.getUser(inputUsername)
+        return user?.password
+    }
+
+    suspend fun updatePassword(username: String, oldPassword: String, newPassword: String) {
+        userRepository.getUserByPassword(username, oldPassword, newPassword)
+    }
+}
+
+Step 5.LoginScreen Update your LoginScreen composable function to handle login with the ViewModel.
+
+ // Create a Button for the login action
+            Button(onClick = {
+                // Launch a coroutine within the current coroutine scope
+                coroutineScope.launch {
+                    if (username.isEmpty()) {
+                        Toast.makeText(context, "Please fill out your username", Toast.LENGTH_SHORT).show()
+                    } else if (password.isEmpty()) {
+                        Toast.makeText(context, "Please fill out your password", Toast.LENGTH_SHORT).show()
+                    } else {
+                        val success = viewModel.loginWithCredentials(username, password)
+                        if (success) {
+                            navController.navigate("home_screen") {
+                                popUpTo("login_screen") { inclusive = true }
+                            }
+                        } else {
+                            Toast.makeText(context, "Please make sure you registered", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            }) {
+                Text(text = "LOGIN")
+            }

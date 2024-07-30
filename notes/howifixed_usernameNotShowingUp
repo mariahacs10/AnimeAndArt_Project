@@ -1,0 +1,289 @@
+7/28/2024
+
+To display the username correctly on the home screen, you need to ensure
+that the UserViewModel correctly fetches and provides the logged-in user's username. Here's how you can
+update your UserViewModel and UserRepository based on the previous responses:
+
+1.UserRepository
+
+  Ensure the getLoggedInUsername function retrieves the username from the shared preferences.
+  The getLoggedInUser function should fetch the currently logged-in user from the database.
+  The saveLoginState function should save the logged-in username to the shared preferences.
+
+package com.example.practice_app.models
+
+import android.content.Context
+import android.content.SharedPreferences
+import android.util.Log
+import com.example.practice_app.db.ApiService
+import com.example.practice_app.db.AppDatabase
+import com.example.practice_app.db.LoginRequest
+import com.example.practice_app.db.RetrofitClient
+import com.example.practice_app.db.SignupRequest
+import com.example.practice_app.db.User
+
+class UserRepository(context: Context) {
+    private val db = AppDatabase.getDatabase(context)
+    private val userDao = db.userDao()
+
+    suspend fun insert(user: User) {
+        userDao.insert(user)
+    }
+
+    suspend fun getUser(username: String): User? {
+        return userDao.getUser(username)
+    }
+
+    suspend fun getUserByPassword(username: String, oldPassword: String, newPassword: String) {
+        userDao.updatePassword(username, oldPassword, newPassword)
+    }
+
+    suspend fun updateLoginStatus(username: String, isLoggedIn: Boolean) {
+        userDao.updateLoginStatus(username, isLoggedIn)
+    }
+
+    suspend fun getLoggedInUser(): User? {
+        return userDao.getLoggedInUser()
+    }
+
+    private val sharedPreferences: SharedPreferences = context.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
+
+    fun saveLoginState(isLoggedIn: Boolean, isGoogleSignIn: Boolean = false, username: String = "") {
+        sharedPreferences.edit()
+            .putBoolean("isLoggedIn", isLoggedIn)
+            .putBoolean("isGoogleSignIn", isGoogleSignIn)
+            .putString("loggedInUsername", username)
+            .apply()
+    }
+
+    fun saveToken(token: String) {
+        sharedPreferences.edit().putString("jwt_token", token).apply()
+    }
+
+    fun getToken(): String? {
+        return sharedPreferences.getString("jwt_token", null)
+    }
+
+    fun getLoggedInUsername(): String {
+        return sharedPreferences.getString("loggedInUsername", "") ?: ""
+    }
+
+    fun isUserLoggedIn(): Boolean {
+        return sharedPreferences.getBoolean("isLoggedIn", false)
+    }
+
+    fun isGoogleSignIn(): Boolean {
+        return sharedPreferences.getBoolean("isGoogleSignIn", false)
+    }
+
+    private val apiService: ApiService = RetrofitClient.createApiService()
+
+    suspend fun signupUser(username: String, password: String, confirmPassword: String): Boolean {
+        try {
+            val response = apiService.signup(SignupRequest(username, password))
+            if (response.isSuccessful) {
+                insert(User(username = username, password = password, confirmPassword = confirmPassword))
+                return true
+            }
+        } catch (e: Exception) {
+            Log.e("UserRepository", "Error during signup", e)
+        }
+        return false
+    }
+
+    suspend fun loginUser(username: String, password: String): Boolean {
+        try {
+            val response = apiService.login(LoginRequest(username, password))
+            if (response.isSuccessful && response.body() != null) {
+                val token = response.body()!!.token
+                saveToken(token)
+                updateLoginStatus(username, true)
+                saveLoginState(true, false, username)
+                return true
+            }
+        } catch (e: Exception) {
+            Log.e("UserRepository", "Error during login", e)
+        }
+        return false
+    }
+}
+
+2.UserViewModel
+
+Ensure that the UserViewModel correctly fetches the logged-in
+user's username and passes it to the UI. The getLoggedInUsername
+method should call the repository's method to fetch the username.
+
+package com.example.practice_app.models
+
+import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.practice_app.db.User
+import kotlinx.coroutines.launch
+
+class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
+    var username = mutableStateOf("")
+    var password = mutableStateOf("")
+    var confirmPassword = mutableStateOf("")
+
+    suspend fun onSignUpClick() {
+        val user = User(username = username.value, password = password.value, confirmPassword = confirmPassword.value)
+        userRepository.insert(user)
+        username.value = ""
+        password.value = ""
+        confirmPassword.value = ""
+    }
+
+    suspend fun signupUser(username: String, password: String, confirmPassword: String): Boolean {
+        return userRepository.signupUser(username, password, confirmPassword)
+    }
+
+    fun getLoggedInUsername(): String {
+        return userRepository.getLoggedInUsername()
+    }
+
+    fun loginWithGoogle() {
+        userRepository.saveLoginState(true, isGoogleSignIn = true)
+    }
+
+    fun isGoogleSignIn(): Boolean {
+        return userRepository.isGoogleSignIn()
+    }
+
+    fun logoutUserGoogle() {
+        userRepository.saveLoginState(false, false)
+    }
+
+    fun logoutUser(username: String) {
+        viewModelScope.launch {
+            userRepository.updateLoginStatus(username, false)
+            userRepository.saveLoginState(false)
+        }
+    }
+
+    fun getLoggedInUser() {
+        viewModelScope.launch {
+            val user = userRepository.getLoggedInUser()
+            user?.let {
+                username.value = it.username ?: ""
+            }
+        }
+    }
+
+    suspend fun getUsername(inputUsername: String): String? {
+        val user = userRepository.getUser(inputUsername)
+        return user?.username
+    }
+
+    suspend fun loginWithCredentials(username: String, password: String): Boolean {
+        return userRepository.loginUser(username, password)
+    }
+
+    suspend fun getPassword(inputUsername: String): String? {
+        val user = userRepository.getUser(inputUsername)
+        return user?.password
+    }
+
+    suspend fun updatePassword(username: String, oldPassword: String, newPassword: String) {
+        userRepository.getUserByPassword(username, oldPassword, newPassword)
+    }
+}
+
+3.HomeScreen
+
+Ensure that the HomeScreen correctly displays the username:
+
+@OptIn(ExperimentalMaterial3Api::class)
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
+@Composable
+fun HomeScreen(navController: NavController, viewModel: UserViewModel) {
+    // Declares a variable 'username' that triggers recomposition when changed
+    var username by remember { mutableStateOf(viewModel.getLoggedInUsername()) }
+    // Remembers a coroutine scope to launch coroutines
+    val coroutineScope = rememberCoroutineScope()
+    // Remembers the state of a drawer (open or closed)
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    // Declares a variable 'isVisible' that triggers recomposition when changed
+    val isVisible by remember { mutableStateOf(true) }
+    val context = LocalContext.current
+    val account = GoogleSignIn.getLastSignedInAccount(context)
+
+    val gso by lazy {
+        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            //This line adds a request to retrieve the user's email
+            // address during the sign-in process.
+            .requestEmail()
+            //This line builds and returns the final GoogleSignInOptions
+            // object based on the configured options.
+            .build()
+    }
+    val googleSignInClient by lazy {
+        GoogleSignIn.getClient(context, gso)
+    }
+
+    val user = remember {
+        account?.let { googleAccount ->
+            // Map Google account to User
+            User(
+                id = null,
+                username = googleAccount.givenName!!,
+                password = null,
+                confirmPassword = null
+            )
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        coroutineScope.launch {
+            viewModel.getLoggedInUser()
+        }
+    }
+
+    ModalNavigationDrawer(
+        // Passes the drawer state to the modal navigation drawer
+        drawerState = drawerState,
+        gesturesEnabled = true,
+        // Defines the content of the drawer
+        drawerContent = {
+            // AnimatedVisibility composable with enter and exit animations
+            AnimatedVisibility(
+                visible = isVisible,
+                enter = slideInHorizontally(
+                    initialOffsetX = { it / 2 },  // Start from half width off-screen
+                    animationSpec = tween(durationMillis = 20000, easing = EaseInOutCubic)
+                ) + fadeIn(
+                    initialAlpha = 0f,
+                    animationSpec = tween(durationMillis = 20000, easing = EaseInOutCubic)
+                ),
+                exit = slideOutHorizontally(
+                    targetOffsetX = { it / 2 },  // Slide out to half width off-screen
+                    animationSpec = tween(durationMillis = 20000, easing = EaseInOutCubic)
+                ) + fadeOut(
+                    targetAlpha = 0f,
+                    animationSpec = tween(durationMillis = 20000, easing = EaseInOutCubic)
+                ),
+                modifier = Modifier.fillMaxHeight().width(218.dp)
+            ){
+                ModalDrawerSheet(
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.primary)
+                        .fillMaxWidth(0.8f)
+                        .fillMaxHeight()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.primary)
+                            .fillMaxWidth()
+                            .height(150.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        if (account != null) {
+                            ProfileImage(username)
+                            Text("${user?.username}", style = TextStyle(fontSize = 20.sp, color = Color.White))
+                        } else {
+                            ProfileImage(username)
+                            Text(text = viewModel.username.value, style = TextStyle(fontSize = 20.sp, color = Color.White))
+                        }
+                    }

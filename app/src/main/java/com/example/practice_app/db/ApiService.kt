@@ -5,18 +5,29 @@ import retrofit2.http.Body
 import retrofit2.http.POST
 
 interface ApiService {
-    @POST("post")
+    @POST("api/auth/login")
     suspend fun login(@Body loginRequest: LoginRequest): Response<LoginResponse>
+
+    @POST("/post")
+    suspend fun googleLogin(@Body request: LoginRequestGoogle): Response<LoginResponseGoogle>
+
+    @POST("api/auth/signup")
+    suspend fun signup(@Body signupRequest: SignupRequest): Response<SignupResponse>
 }
 
-data class LoginResponse(
-    val args: Map<String, String>,
-    val data: Map<String, String>,
-    val files: Map<String, String>,
-    val form: Map<String, String>,
-    val headers: Map<String, String>,
-    val json: LoginRequest?,
-    val url: String
+data class SignupRequest(
+    val username: String,
+    val password: String
+)
+
+data class SignupResponse(
+    val message: String
 )
 
 data class LoginRequest(val username: String, val password: String)
+
+data class LoginResponse(val token: String)
+
+data class LoginRequestGoogle(val idToken: String)
+
+data class LoginResponseGoogle(val idTokenResponse: String)

@@ -144,8 +144,7 @@ fun SignUpScreen(
                     toast.setGravity(Gravity.BOTTOM, 0,80)
                     toast.show()
                     coroutineScope.launch {
-                        // Call viewModel's sign-up function in a coroutine
-                        viewModel.onSignUpClick()
+                        viewModel.signupUser(username, password, confirmedPassword)
                     }
                     // Navigate back after sign-up
                     navController.popBackStack()
