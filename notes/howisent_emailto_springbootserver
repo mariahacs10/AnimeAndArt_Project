@@ -1,0 +1,84 @@
+8/2/2024
+
+Notes on Sending Email to Spring Boot Database
+
+Step 1.Update UserViewModel, create a variable for storing the email
+input
+
+var email  = mutableStateOf("")
+
+
+Step 2.Modify Signupscreen, Add an input field for email in the signup screen
+var email by viewModel.email
+
+// Email input field
+OutlinedTextField(
+   value  = email,
+   // Update username state on change
+   onValueChange = { email = it },
+   // Label for the field
+   label = { Text("Enter email") }
+)
+
+Step 3.Update UserEntity, include the email field in the user entity class
+@Entity(tableName="user")
+data class User(
+    //The primary key for the entity, autoGenerate=true means
+    //a unique id will be auto generated for each user.
+
+    /**Just a little side note on autoGenerate=true
+
+    If you manually set primary key(autoGenerate=false), you have to make sure the values are unique
+    With Auto generated IDs, Room handles uniqueness for you.
+
+    Also you dont have to implement logic to create new unique ids every time you insert
+    Room handles it automatically.
+     */
+    @PrimaryKey(autoGenerate = true) val id: Int? = null,
+    //The username property. A non-null String
+    val username: String,
+    //The password property. a non-null String
+    val password: String?,
+    //Optional confirm password property,Can be null
+    val confirmPassword: String?,
+    val email: String?,
+    val isLoggedIn: Boolean = false
+)
+Note: With auto-generated IDs, Room handles uniqueness for you,
+so you don't have to implement logic to create new unique IDs every time you insert.
+
+
+Step 4.Update AppDatabase Version, this handles schema changes by incrementing
+the version number, Incrementing the version number helps Room identify schema
+changes and apply migrations
+
+Step 5.Modify ApiService for SignupRequest,include the email field in the signup request.
+interface ApiService {
+    //POST request for user signup
+    @POST("api/auth/signup")
+    suspend fun signup(@Body signupRequest: SignupRequest): Response<SignupResponse>
+}
+
+//Data class for signup request
+data class SignupRequest(
+    val username: String,
+    val password: String,
+    val email: String
+)
+
+//data class for signup response
+data class SignupResponse(
+    val message: String
+)
+
+Step 6. Update UserViewModel handle the email field in the signup function.
+
+suspend fun signupUser(username: String, password: String, confirmPassword: String, email: String): Boolean {
+        // Call repository's signupUser function and return its result
+        return userRepository.signupUser(username, password, confirmPassword, email)
+    }
+
+
+Conclusion
+By following these steps, you can successfully send and store
+user emails in your Spring Boot backend.

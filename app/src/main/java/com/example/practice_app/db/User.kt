@@ -23,5 +23,6 @@ data class User(
     val password: String?,
     //Optional confirm password property,Can be null
     val confirmPassword: String?,
+    val email: String?,
     val isLoggedIn: Boolean = false
 )

@@ -39,6 +39,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.example.practice_app.R
 import com.example.practice_app.models.UserViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -134,14 +135,11 @@ fun LoginScreen(navController: NavController, viewModel: UserViewModel) {
                     } else if (password.isEmpty()) {
                         Toast.makeText(context, "Please fill out your password", Toast.LENGTH_SHORT).show()
                     } else {
-                        val success = viewModel.loginWithCredentials(username, password)
-                        if (success) {
+                       viewModel.loginWithCredentials(username, password)
+
                             navController.navigate("home_screen") {
                                 popUpTo("login_screen") { inclusive = true }
                             }
-                        } else {
-                            Toast.makeText(context, "Please make sure you registered", Toast.LENGTH_LONG).show()
-                        }
                     }
                 }
             }) {
@@ -151,33 +149,24 @@ fun LoginScreen(navController: NavController, viewModel: UserViewModel) {
             // Add a vertical space of 16dp
             Spacer(modifier = Modifier.height(16.dp))
 
-
             val gso = remember {
                 GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                     .requestEmail()
                     .build()
             }
+
             val signInLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) { result ->
-                Log.d("GoogleSignIn", "Received result: ${result.resultCode}")
                 if (result.resultCode == Activity.RESULT_OK) {
                     try {
-                        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-                        val account = task.getResult(ApiException::class.java)
-                        val idToken = account.idToken
-                        Log.d("GoogleSignIn", "Received ID Token: $idToken")
-                        if (idToken != null) {
-                            coroutineScope.launch {
-                                viewModel.loginWithGoogleToken(idToken)
-                            }
+                        viewModel.loginWithGoogle()
+                        navController.navigate("home_screen") {
+                            popUpTo("login_screen") { inclusive = true }
                         }
                     } catch (e: ApiException) {
-                        Log.e("GoogleSignIn", "Google sign in failed", e)
+                        Toast.makeText(context, "Google sign in failed", Toast.LENGTH_SHORT).show()
                     }
-                } else {
-                    Log.e("GoogleSignIn", "Google sign in was cancelled or failed")
                 }
             }
-
             val googleSignInClient = remember {
                 GoogleSignIn.getClient(context, gso)
             }
@@ -195,6 +184,7 @@ fun LoginScreen(navController: NavController, viewModel: UserViewModel) {
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(text = "Sign in with Google")
             }
+
 
             // Add a vertical space of 50dp
             Spacer(modifier = Modifier.padding(top = 50.dp))

@@ -124,7 +124,8 @@ fun HomeScreen(navController: NavController, viewModel: UserViewModel) {
                 id = null,
                 username = googleAccount.givenName!!,
                 password = null,
-                confirmPassword = null
+                confirmPassword = null,
+                email = null
             )
         }
     }

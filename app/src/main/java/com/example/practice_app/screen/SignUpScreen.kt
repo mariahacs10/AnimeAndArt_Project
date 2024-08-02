@@ -34,9 +34,10 @@ import com.example.practice_app.R
 import com.example.practice_app.models.UserViewModel
 import kotlinx.coroutines.launch
 
+
+// Define a composable function for the sign-up screen
 @SuppressLint("SuspiciousIndentation")
 @OptIn(ExperimentalMaterial3Api::class)
-// Define a composable function for the sign-up screen
 @Composable
 fun SignUpScreen(
     // Navigation controller for screen transitions
@@ -47,13 +48,16 @@ fun SignUpScreen(
     // Coroutine scope for asynchronous operations
     val coroutineScope = rememberCoroutineScope()
 
-    // Read username and password state from viewModel, and create local state for confirmed password and visibility
+    // Read username, password and email state from viewModel,
+    // and create local state for confirmed password and visibility
     var username by viewModel.username
     var password by viewModel.password
+    var email by viewModel.email
     var confirmedPassword by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmVisible by remember { mutableStateOf(false) }
     val context = LocalContext.current
+
     Box(
         modifier = Modifier.fillMaxSize()  // Fill the entire screen
     ) {
@@ -66,6 +70,7 @@ fun SignUpScreen(
             // Center content horizontally
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Display the "Create Account" text
             Text(
                 text = "Create Account",
                 // Apply headlineMedium text style
@@ -82,6 +87,15 @@ fun SignUpScreen(
                 onValueChange = { username = it },
                 // Label for the field
                 label = { Text("Username") }
+            )
+
+            // Email input field
+            OutlinedTextField(
+                value = email,
+                // Update username state on change
+                onValueChange = { email = it },
+                // Label for the field
+                label = { Text("Enter email") }
             )
 
             // Add vertical spacing
@@ -105,6 +119,7 @@ fun SignUpScreen(
                 },
                 label = { Text("Password") }
             )
+
 
             Spacer(modifier = Modifier.height(8.dp))  // Add vertical spacing
 
@@ -144,7 +159,8 @@ fun SignUpScreen(
                     toast.setGravity(Gravity.BOTTOM, 0,80)
                     toast.show()
                     coroutineScope.launch {
-                        viewModel.signupUser(username, password, confirmedPassword)
+                        // Call the ViewModel function to handle sign-up with email
+                        viewModel.signupUser(username, password, confirmedPassword, email)
                     }
                     // Navigate back after sign-up
                     navController.popBackStack()
