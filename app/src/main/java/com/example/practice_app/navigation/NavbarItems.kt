@@ -8,14 +8,19 @@ object NavBarItems {
 
     val BarItems = listOf(
         BarItem(
+            title = "AllImages",
+            image = R.drawable.art,
+            route = "allImages"
+        ),
+        BarItem(
             title = "Anime",
             image = R.drawable.person,
             route = "anime"
         ),
         BarItem(
-            title = "Artwork",
+            title = "ArtWork",
             image = R.drawable.art,
-            route = "artwork"
+            route = "erikasArtWork"
         ),
         BarItem(
             title = "Comming soon",

@@ -21,6 +21,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,6 +32,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material3.Card
 import androidx.compose.material3.Divider
@@ -159,7 +161,9 @@ fun HomeScreen(navController: NavController, viewModel: UserViewModel) {
                     targetAlpha = 0f,
                     animationSpec = tween(durationMillis = 20000, easing = EaseInOutCubic)
                 ),
-                modifier = Modifier.fillMaxHeight().width(218.dp)
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(218.dp)
             ){
                 ModalDrawerSheet(
                     modifier = Modifier
@@ -186,6 +190,20 @@ fun HomeScreen(navController: NavController, viewModel: UserViewModel) {
 
                     // Divider composable
                     Divider()
+
+                    NavigationDrawerItem(
+                        // Text label for logout
+                        label = { Text(text = "Favorites", color = Color.Black) },
+                        // Indicates if the item is selected
+                        selected = false,
+                        // Icon for logout
+                        icon = { Icon(Icons.Filled.Favorite, contentDescription = "Favorites") },
+                        // Click listener for logout action
+                        onClick = {}
+                    )
+                    Divider()
+
+                    Spacer(modifier = Modifier.padding(top = 360.dp))
 
                     // Custom composable item for navigation drawer
                     NavigationDrawerItem(
@@ -226,7 +244,8 @@ fun HomeScreen(navController: NavController, viewModel: UserViewModel) {
             topBar = {
                 TopAppBar(
                     // Title text for the top app bar
-                    title = { Text("Practice App") },
+                    title = { Text("ArtWork And Anime") },
+
                     navigationIcon = {
                         IconButton(onClick = {
                             coroutineScope.launch {
@@ -255,7 +274,7 @@ fun HomeScreen(navController: NavController, viewModel: UserViewModel) {
             }
         ) {
             // Composable function for the bottom navmain screen content
-            MainScreen()
+            MainScreen(navController)
         }
     }
 }
@@ -359,7 +378,7 @@ private fun getProfileImageFilename(username: String): String {
 // Main screen composable function
 @OptIn(ExperimentalPagerApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen() {
+fun MainScreen(navController: NavController) {
     val pagerState = rememberPagerState()  // Remembering state for pager
     val coroutineScope = rememberCoroutineScope()  // Remembering coroutine scope
 
@@ -371,12 +390,15 @@ fun MainScreen() {
                 count = NavBarItems.BarItems.size,
                 state = pagerState,
                 modifier = Modifier.padding(padding)
+                    .background(Color(0xFFA2A2A2))
+
             ) { page ->
                 // Switch statement to select content based on page index
                 when (page) {
-                    0 -> AnimeComposable()  // First page content
-                    1 -> ArtWorkComposable()  // Second page content
-                    2 -> CommingSoonComposable()  // Third page content
+                    0 -> AllImagesComposable(navController)  // First page content
+                    1 -> AnimeConventionComposable()
+                    2 -> ErikasArtWorkComposable()
+                    3 -> CommingSoonComposable()  // Third page content
                 }
             }
         },

@@ -1,0 +1,139 @@
+8/22/2024
+
+Problems: None <3
+
+Step by Steps on how to do Seperate the Anime and Artwork from allimages
+
+Step 1.Update the ApiService Interface Modify the ApiService interface to include a new method for
+fetching images by category.
+
+ @GET("/allImages/category/{category}")
+    @Headers("X-Api-Key: ${API_KEY}")
+    suspend fun getImagesByCategory(
+        @Path("category") category: String
+    ): Response<List<AllImagesItem>>
+
+Step 2.Create a ViewModel Function for Anime Images And ArtWorkImages Add a new function in your
+AllImagesViewModel to fetch anime images and artwork image.
+
+ // New function to fetch anime images
+    suspend fun fetchAnimeImagesData(): List<AllImagesItem>? {
+        return try {
+            val response = RetrofitClient.createApiService.getImagesByCategory("anime")
+            if (response.isSuccessful) {
+                response.body()
+            } else {
+                Log.d("TAG", "ERROR fetchAnimeData: ${response.code()} ${response.message()}")
+                null
+            }
+        } catch (e: Exception) {
+            Log.d("TAG", "ERROR fetchAnimeData: ${e.message}")
+            null
+        }
+    }
+
+    // New function to fetch anime images
+    suspend fun fetchArtWorkImagesData(): List<AllImagesItem>? {
+        return try {
+            val response = RetrofitClient.createApiService.getImagesByCategory("jjk")
+            if (response.isSuccessful) {
+                response.body()
+            } else {
+                Log.d("TAG", "ERROR fetchArtworkData: ${response.code()} ${response.message()}")
+                null
+            }
+        } catch (e: Exception) {
+            Log.d("TAG", "ERROR fetchArtWorkData: ${e.message}")
+            null
+        }
+    }
+
+Step 3.Modify the AnimeConventionComposable and ErikasArtworkComposable to Display Anime Images and Artwork images:
+Update the AnimeConventionComposable And ArtWorkComposable to fetch and display anime and artwork images using the
+fetchAnimeImagesData and fetchArtWorkImagesData function:
+
+@Composable
+fun AnimeConventionComposable() {
+    val animeData = remember { mutableStateOf<List<AllImagesItem>>(emptyList()) }
+    val viewModel: AllImagesViewModel = viewModel()
+
+    LaunchedEffect(Unit) {
+        val anime = viewModel.fetchAnimeImagesData() ?: emptyList()
+        animeData.value = anime
+    }
+
+    if (animeData.value.isNotEmpty()) {
+        LazyVerticalGrid(
+
+            columns = GridCells.Fixed(2),
+            modifier = Modifier.fillMaxSize()
+                .background(Color(0xFFA2A2A2)),
+            contentPadding = PaddingValues(top = 63.dp, bottom = 16.dp, start = 8.dp, end = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(animeData.value) { images ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                ) {
+                    CoilImageForAllImages(
+                        imageUrl = images.allImageUrl,
+                        contentDescription = "Anime picture",
+                        modifier = Modifier
+                            .size(150.dp)
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(47.dp))
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+        }
+    } else {
+        Text("No Anime pics found", modifier = Modifier.padding(16.dp))
+    }
+}
+
+@Composable
+fun ErikasArtWorkComposable() {
+    val artWork = remember { mutableStateOf<List<AllImagesItem>>(emptyList()) }
+    val viewModel: AllImagesViewModel = viewModel()
+
+    LaunchedEffect(Unit) {
+        val art = viewModel.fetchArtWorkImagesData() ?: emptyList()
+        artWork.value = art
+    }
+
+    if (artWork.value.isNotEmpty()) {
+        LazyVerticalGrid(
+
+            columns = GridCells.Fixed(2),
+            modifier = Modifier.fillMaxSize()
+                .background(Color(0xFFA2A2A2)),
+            contentPadding = PaddingValues(top = 63.dp, bottom = 16.dp, start = 8.dp, end = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(artWork.value) { images ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                ) {
+                    CoilImageForAllImages(
+                        imageUrl = images.allImageUrl,
+                        contentDescription = "ArtWork picture",
+                        modifier = Modifier
+                            .size(150.dp)
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(47.dp))
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+        }
+    } else {
+        Text("No artWork found", modifier = Modifier.padding(16.dp))
+    }
+}

@@ -1,0 +1,32 @@
+8/22/2024
+
+Here are the Step by Step notes.
+
+1.First in the ImageDetailScreen i added the favortives heart:
+
+ IconButton(
+            onClick = { isFavorite.value = !isFavorite.value },  // Toggle heart state on click
+            modifier = Modifier
+                .align(Alignment.BottomEnd) // Position it at the bottom right
+                .padding(bottom = 16.dp, end = 16.dp) // Add padding to position correctly
+        ) {
+            Icon(
+                imageVector = if (isFavorite.value) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
+                contentDescription = if (isFavorite.value) "Unfavorite" else "Favorite",
+                tint = if (isFavorite.value) Color.Blue else Color.White
+            )
+        }
+
+2.Optionally but i wanted to do was, but the favortives icon in my side drawer so here it is:
+
+                    NavigationDrawerItem(
+                        // Text label for logout
+                        label = { Text(text = "Favorites", color = Color.Black) },
+                        // Indicates if the item is selected
+                        selected = false,
+                        // Icon for logout
+                        icon = { Icon(Icons.Filled.Favorite, contentDescription = "Favorites") },
+                        // Click listener for logout action
+                        onClick = {}
+                    )
+                    Divider()

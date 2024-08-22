@@ -1,0 +1,6 @@
+8/22/2024
+
+All you have to do to round your images is:
+ .clip(RoundedCornerShape(45.dp))
+
+ Inside the CoilImagesAllImages, Or whever you need to round the image.

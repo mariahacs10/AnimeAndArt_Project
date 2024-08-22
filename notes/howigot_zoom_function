@@ -1,0 +1,91 @@
+8/22/2024
+
+Problems:
+
+I had a probable with zooming the image out and zooming it in. I fixed it and it looks smoother
+you just have to aim for the middle.
+
+Step by Step notes.
+
+Step 1.In the ImageDetaiLScreen, you need to create a ZoomableImage composable that will config the information about
+zooming in and out of the picture:
+
+@Composable
+fun ZoomableImage(
+    imageUrl: String,
+    contentDescription: String,
+    modifier: Modifier = Modifier
+) {
+    var scale = remember { mutableStateOf(1f) }
+    var isFavorite = remember { mutableStateOf(false) }  // Track heart state
+
+    val state = rememberTransformableState { zoomChange, _, _ ->
+        scale.value = maxOf(1f, minOf(8f, scale.value * zoomChange))
+    }
+
+    Box(
+        modifier = modifier
+            .transformable(state = state)
+    ) {
+        CoilImageForAllImages(
+            imageUrl = imageUrl,
+            contentDescription = contentDescription,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer(
+                    scaleX = scale.value,
+                    scaleY = scale.value
+                )
+                .clip(RoundedCornerShape(100.dp)) // Increase the corner radius to 32dp
+        )
+
+        IconButton(
+            onClick = { isFavorite.value = !isFavorite.value },  // Toggle heart state on click
+            modifier = Modifier
+                .align(Alignment.BottomEnd) // Position it at the bottom right
+                .padding(bottom = 16.dp, end = 16.dp) // Add padding to position correctly
+        ) {
+            Icon(
+                imageVector = if (isFavorite.value) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
+                contentDescription = if (isFavorite.value) "Unfavorite" else "Favorite",
+                tint = if (isFavorite.value) Color.Blue else Color.White
+            )
+        }
+    }
+}
+
+Step 2. pass in ZoomableImage in the ImageDetailScreen instead of CoilImagesForAllImages because it doesnt have any
+zooming features:
+
+@Composable
+fun ImageDetailScreen(imageUrl: String, description: String, onBack: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFA2A2A2))
+            .padding(16.dp)
+    ) {
+        IconButton(onClick = onBack) {
+            Icon(Icons.Default.ArrowBack, contentDescription = "Back",
+                    tint = Color.White)
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier,
+                color = Color.White
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ZoomableImage(
+            imageUrl = imageUrl,
+            contentDescription = "Full size image",
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(300.dp)  // Adjust this value as needed
+        )
+    }
+}

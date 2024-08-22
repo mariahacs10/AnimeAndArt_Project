@@ -1,4 +1,6 @@
 import org.jetbrains.kotlin.kapt3.base.Kapt.kapt
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.util.Properties
 
 plugins {
     id("com.android.application")
@@ -17,11 +19,25 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
+        android.buildFeatures.buildConfig =true
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // Use kotlin.properties for reading properties files
+        val properties = Properties()
+
+        // Load from local.properties
+        val propFile = project.rootProject.file("local.properties")
+        properties.load(propFile.inputStream())
+
+        // Get the property value
+        val apiKey = properties.getProperty("API_KEY")
+
+        // Set buildConfigField
+        buildConfigField("String", "API_KEY", "\"$apiKey\"")
     }
 
     buildTypes {

@@ -6,7 +6,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
-    private const val BASE_URL = "http://192.168.68.114:8686/"
+    private const val BASE_URL = "http://192.168.68.118:8686/"
 
     private val client = OkHttpClient.Builder()
         .addInterceptor(HttpLoggingInterceptor().apply {
@@ -20,5 +20,7 @@ object RetrofitClient {
         .client(client)
         .build()
 
-    fun createApiService(): ApiService = retrofit.create(ApiService::class.java)
+    val createApiService by lazy {
+       retrofit.create(ApiService::class.java)
+    }
 }

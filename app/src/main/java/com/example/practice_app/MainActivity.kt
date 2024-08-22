@@ -1,26 +1,32 @@
 package com.example.practice_app
 
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.practice_app.models.UserRepository
 import com.example.practice_app.models.UserViewModel
 import com.example.practice_app.navigation.NavRoutes
-import com.example.practice_app.screen.AnimeComposable
-import com.example.practice_app.screen.ArtWorkComposable
+import com.example.practice_app.screen.AllImagesComposable
+import com.example.practice_app.screen.AnimeConventionComposable
 import com.example.practice_app.screen.CommingSoonComposable
+import com.example.practice_app.screen.ErikasArtWorkComposable
 import com.example.practice_app.screen.HomeScreen
+import com.example.practice_app.screen.ImageDetailScreen
 import com.example.practice_app.screen.LoginScreen
 import com.example.practice_app.screen.SignUpScreen
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import java.net.URLDecoder
 
 
 class MainActivity : ComponentActivity() {
@@ -90,20 +96,31 @@ fun HomeNavigation(viewModel: UserViewModel, startDestination: String) {
             // Call the HomeScreen composable function with the navController and viewModel
             HomeScreen(navController, viewModel)
         }
-
-        composable(NavRoutes.Anime.route)
-        {
-            AnimeComposable()
+        composable(NavRoutes.AnimeConvention.route) {
+            AnimeConventionComposable()
         }
-
-        composable(NavRoutes.ArtWork.route)
-        {
-            ArtWorkComposable()
+        composable(NavRoutes.ErikasArtWork.route) {
+            ErikasArtWorkComposable()
         }
-
-        composable(NavRoutes.CommingSoon.route)
-        {
+        composable(NavRoutes.CommingSoon.route) {
             CommingSoonComposable()
+        }
+        composable(
+            route = NavRoutes.ImageDetail.route,
+            arguments = listOf(
+                navArgument("imageUrl") { type = NavType.StringType },
+                navArgument("description") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val encodedImageUrl = backStackEntry.arguments?.getString("imageUrl") ?: ""
+            val encodedDescription = backStackEntry.arguments?.getString("description") ?: ""
+            val imageUrl = URLDecoder.decode(encodedImageUrl, "UTF-8")
+            val description = URLDecoder.decode(encodedDescription, "UTF-8")
+            ImageDetailScreen(
+                imageUrl = imageUrl,
+                description = description,
+                onBack = { navController.popBackStack() }
+            )
         }
     }
 }

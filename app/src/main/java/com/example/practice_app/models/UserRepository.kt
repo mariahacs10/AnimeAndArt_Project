@@ -80,7 +80,7 @@ class UserRepository(context: Context) {
     }
 
     //Create an instance of ApiService using RetrofitClient
-    private val apiService: ApiService = RetrofitClient.createApiService()
+    private val apiService: ApiService = RetrofitClient.createApiService
 
     //Suspend function to sign up a user
     suspend fun signupUser(username: String, password: String, confirmPassword: String, email: String): Boolean {
