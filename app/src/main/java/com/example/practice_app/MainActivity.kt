@@ -1,126 +1,190 @@
 package com.example.practice_app
 
-
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.ViewModel
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.practice_app.db.AppDatabase
+import com.example.practice_app.db.RetrofitClient
+import com.example.practice_app.models.FavoritesViewModel
+import com.example.practice_app.models.FavoritesViewModelFactory
+import com.example.practice_app.models.ForgotPasswordViewModel
 import com.example.practice_app.models.UserRepository
 import com.example.practice_app.models.UserViewModel
+import com.example.practice_app.models.UserViewModelFactory
 import com.example.practice_app.navigation.NavRoutes
-import com.example.practice_app.screen.AllImagesComposable
-import com.example.practice_app.screen.AnimeConventionComposable
-import com.example.practice_app.screen.CommingSoonComposable
-import com.example.practice_app.screen.ErikasArtWorkComposable
-import com.example.practice_app.screen.HomeScreen
-import com.example.practice_app.screen.ImageDetailScreen
-import com.example.practice_app.screen.LoginScreen
-import com.example.practice_app.screen.SignUpScreen
+import com.example.practice_app.screen.*
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInClient
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import java.net.URLDecoder
-
 
 class MainActivity : ComponentActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Create an instance of the UserRepository
-        val repository = UserRepository(applicationContext)
-
-        // Create a ViewModelFactory to provide the repository to the ViewModel
-        val viewModelFactory = UserViewModelFactory(repository)
-
-        // Obtain the UserViewModel instance using the ViewModelProvider
-        val viewModel = ViewModelProvider(this, viewModelFactory)
+        val userRepository = UserRepository(applicationContext)
+        val viewModelFactory = UserViewModelFactory(userRepository)
+        val userViewModel = ViewModelProvider(this, viewModelFactory)
             .get(UserViewModel::class.java)
+        val database = AppDatabase.getDatabase(applicationContext)
+        val favoriteImageDao = database.favoriteImageDao()
+        val apiService = RetrofitClient.createApiService
+        val favoritesViewModelFactory = FavoritesViewModelFactory(apiService, favoriteImageDao)
 
-        // Set the content of the activity using a composable function
         setContent {
-            //add a check for Google Sign-In state
-            val isUserLoggedIn = repository.isUserLoggedIn()
-            val googleAccount = GoogleSignIn.getLastSignedInAccount(this)
+            val isDarkModeEnabled by userViewModel.isDarkModeEnabled.collectAsState()
 
-            val startDestination = when {
-                isUserLoggedIn -> "home_screen"
-                googleAccount != null -> "home_screen"
-                else -> "login_screen"
+            MaterialTheme(
+                colorScheme = if (isDarkModeEnabled) darkColorScheme() else lightColorScheme()
+            ) {
+                StatusBarColor(isDarkModeEnabled)
+
+                // Updated user authentication check
+                val isUserLoggedIn = userRepository.isUserLoggedIn()
+
+                // Update how we handle user IDs (assuming Long type)
+                val userId: Long = userRepository.getUserId() ?: -1L
+
+                // No Google Sign-in logic
+
+                val startDestination = when {
+                    isUserLoggedIn -> "home_screen"
+                    else -> "login_screen"
+                }
+
+                HomeNavigation(
+                    userViewModel = userViewModel,
+                    startDestination = startDestination,
+                    userId = userId,
+                    favoritesViewModelFactory = favoritesViewModelFactory
+                )
             }
-
-            HomeNavigation(viewModel, startDestination)
         }
     }
 }
 
-
-// UserViewModelFactory is a factory class for creating instances of UserViewModel
-class UserViewModelFactory(
-    private val repository: UserRepository
-) : ViewModelProvider.Factory {
-    // Override the create function to create and return a UserViewModel instance
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        // Create a new instance of UserViewModel with the injected repository and cast it to the requested model class
-        return UserViewModel(repository) as T
-    }
-}
-
-// HomeNavigation is a composable function that sets up the navigation graph
 @Composable
-fun HomeNavigation(viewModel: UserViewModel, startDestination: String) {
-    // Create a NavController using the rememberNavController function
-    val navController = rememberNavController()
+fun StatusBarColor(isDarkModeEnabled: Boolean) {
+    val systemUiController = rememberSystemUiController()
+    val statusBarColor = if (isDarkModeEnabled) {
+        Color.Black // Dark mode status bar color
+    } else {
+        Color(0xFF6650a4) // Light mode status bar color
+    }
 
-    // Create a NavHost with the specified startDestination
+    DisposableEffect(systemUiController, statusBarColor) {
+        systemUiController.setStatusBarColor(
+            color = statusBarColor,
+            darkIcons = !isDarkModeEnabled // Use light icons in dark mode, dark icons in light mode
+        )
+        onDispose {}
+    }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomeNavigation(
+    userViewModel: UserViewModel,
+    startDestination: String,
+    userId: Long,  // Changed from Long? to String
+    favoritesViewModelFactory: FavoritesViewModelFactory
+) {
+    val navController = rememberNavController()
+    val forgotPasswordViewModel: ForgotPasswordViewModel = viewModel()
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val favoritesViewModel: FavoritesViewModel = viewModel(factory = favoritesViewModelFactory)
+
     NavHost(navController = navController, startDestination = startDestination) {
-        // Define a composable for the login screen
+        // Update relevant composable routes
         composable("login_screen") {
-            // Call the LoginScreen composable function with the navController and viewModel
-            LoginScreen(navController = navController, viewModel)
+            LoginScreen(navController = navController, userViewModel)
         }
-        // Define a composable for the signup screen
-        composable("signup_screen") {
-            // Call the SignUpScreen composable function with the navController and viewModel
-            SignUpScreen(navController = navController, viewModel)
-        }
-        // Define a composable for the home screen
-        composable("home_screen") {
-            // Call the HomeScreen composable function with the navController and viewModel
-            HomeScreen(navController, viewModel)
-        }
-        composable(NavRoutes.AnimeConvention.route) {
-            AnimeConventionComposable()
-        }
-        composable(NavRoutes.ErikasArtWork.route) {
-            ErikasArtWorkComposable()
-        }
-        composable(NavRoutes.CommingSoon.route) {
-            CommingSoonComposable()
-        }
+
+        // Update ImageDetail route
         composable(
             route = NavRoutes.ImageDetail.route,
             arguments = listOf(
                 navArgument("imageUrl") { type = NavType.StringType },
-                navArgument("description") { type = NavType.StringType }
+                navArgument("description") { type = NavType.StringType },
+                navArgument("imageId") { type = NavType.LongType }
             )
         ) { backStackEntry ->
-            val encodedImageUrl = backStackEntry.arguments?.getString("imageUrl") ?: ""
-            val encodedDescription = backStackEntry.arguments?.getString("description") ?: ""
-            val imageUrl = URLDecoder.decode(encodedImageUrl, "UTF-8")
-            val description = URLDecoder.decode(encodedDescription, "UTF-8")
+            val imageUrl = backStackEntry.arguments?.getString("imageUrl") ?: ""
+            val description = backStackEntry.arguments?.getString("description") ?: ""
+            val imageId = backStackEntry.arguments?.getLong("imageId") ?: 0L
+
             ImageDetailScreen(
                 imageUrl = imageUrl,
                 description = description,
+                imageId = imageId,
+                userId = userId,
+                viewModel = favoritesViewModel
+            ) {
+                navController.popBackStack()
+            }
+        }
+
+        // Update favorites screen route
+        composable("favorites_screen") {
+            FavoritesScreen(
+                viewModel = favoritesViewModel,
+                userId = userId,
+                navController = navController,
+                drawerState = drawerState
+            )
+        }
+
+        // Update favorite image detail route
+        composable("favoriteImageDetail/{imageUrl}/{imageId}") { backStackEntry ->
+            val imageUrl = backStackEntry.arguments?.getString("imageUrl") ?: ""
+
+            FavoriteImageDetailScreen(
+                imageUrl = imageUrl,
                 onBack = { navController.popBackStack() }
             )
+        }
+
+        // Other routes remain the same...
+        composable("signup_screen") {
+            SignUpScreen(navController = navController, userViewModel)
+        }
+        composable("home_screen") {
+            HomeScreen(navController, userViewModel)
+        }
+        composable(NavRoutes.AnimeConvention.route) {
+            AnimeConventionComposable(navController = navController)
+        }
+        composable(NavRoutes.ErikasArtWork.route) {
+            ErikasArtWorkComposable(navController = navController)
+        }
+        composable(NavRoutes.CommingSoon.route) {
+            CommingSoonComposable()
+        }
+        composable("forgotPassword") {
+            ForgotPasswordScreen(
+                viewModel = forgotPasswordViewModel,
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+        composable("settings_screen") {
+            SettingsScreen(navController, userViewModel, drawerState)
         }
     }
 }

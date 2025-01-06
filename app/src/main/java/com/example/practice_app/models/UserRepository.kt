@@ -9,6 +9,7 @@ import com.example.practice_app.db.LoginRequest
 import com.example.practice_app.db.RetrofitClient
 import com.example.practice_app.db.SignupRequest
 import com.example.practice_app.db.User
+import com.google.android.gms.auth.api.signin.GoogleSignIn
 
 //Define a UserRepository class that takes  a Context as a parameter
 class UserRepository(context: Context) {
@@ -16,6 +17,8 @@ class UserRepository(context: Context) {
     private val db = AppDatabase.getDatabase(context)
     //Get the UserDao from the database
     private val userDao = db.userDao()
+
+
 
     //suspend function to insert a user into the database
     suspend fun insert(user: User) {
@@ -38,31 +41,43 @@ class UserRepository(context: Context) {
     }
 
     //suspend function to get the currently logged in user from the database
-    suspend fun getLoggedInUser(): User? {
-        return userDao.getLoggedInUser()
-    }
+//    suspend fun getLoggedInUser(): User? {
+//        return userDao.getLoggedInUser()
+//    }
 
     //Function to save login state in shared preferences
     private val sharedPreferences: SharedPreferences = context.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
 
     //Function to save the login state in SharedPreferences
-    fun saveLoginState(isLoggedIn: Boolean, isGoogleSignIn: Boolean = false, username: String = "") {
+    fun saveLoginState(isLoggedIn: Boolean, username: String = "") {
         sharedPreferences.edit()
             .putBoolean("isLoggedIn", isLoggedIn)
-            .putBoolean("isGoogleSignIn", isGoogleSignIn)
+           // .putBoolean("isGoogleSignIn", isGoogleSignIn)
             .putString("loggedInUsername", username)
             .apply()
     }
 
+    fun saveDarkModePreference(isDarkModeEnabled: Boolean) {
+        sharedPreferences.edit()
+            .putBoolean("isDarkModeEnabled", isDarkModeEnabled)
+            .apply()
+    }
+
+    // Retrieve dark mode preference
+    fun isDarkModeEnabled(): Boolean {
+        return sharedPreferences.getBoolean("isDarkModeEnabled", false) // default to light mode
+    }
     //Function to save JWT token in SharedPreferences
+    // Save JWT token in SharedPreferences
     fun saveToken(token: String) {
         sharedPreferences.edit().putString("jwt_token", token).apply()
     }
 
-    //Function to get JWT token from SharedPreferences
+    // Retrieve the JWT token from SharedPreferences
     fun getToken(): String? {
         return sharedPreferences.getString("jwt_token", null)
     }
+
 
     //Function to get logged in username from sSharedpreferences
     fun getLoggedInUsername(): String {
@@ -75,9 +90,9 @@ class UserRepository(context: Context) {
     }
 
     //Function to check if the user signed in with Google from SharedPreferences
-    fun isGoogleSignIn(): Boolean {
-        return sharedPreferences.getBoolean("isGoogleSignIn", false)
-    }
+//    fun isGoogleSignIn(): Boolean {
+//        return sharedPreferences.getBoolean("isGoogleSignIn", false)
+//    }
 
     //Create an instance of ApiService using RetrofitClient
     private val apiService: ApiService = RetrofitClient.createApiService
@@ -98,25 +113,70 @@ class UserRepository(context: Context) {
         }
         return false
     }
+    // Save userId in SharedPreferences
+    fun saveUserId(userId: Long) {
+        sharedPreferences.edit().putLong("user_id", userId).apply()
+    }
 
-    //Suspend function to log in a user
+    // Retrieve userId from SharedPreferences
+    fun getUserId(): Long? {
+        return if (sharedPreferences.contains("user_id")) {
+            sharedPreferences.getLong("user_id", -1)
+        } else null
+    }
     suspend fun loginUser(username: String, password: String): Boolean {
         try {
-            // Make an API call to log in the user
             val response = apiService.login(LoginRequest(username, password))
             if (response.isSuccessful && response.body() != null) {
-                // If successful, save the token and update login status
-                val token = response.body()!!.token
+                val loginResponse = response.body()!!
+                val token = loginResponse.token
+                val userId = loginResponse.userId  // Retrieve the userId
+
                 saveToken(token)
+                saveUserId(userId)  // Save userId for future API calls
                 updateLoginStatus(username, true)
-                saveLoginState(true, false, username)
+                saveLoginState(true, username)
                 return true
+            } else {
+                Log.e("UserRepository", "Login failed: ${response.errorBody()?.string()}")
+                return false
             }
         } catch (e: Exception) {
-            // Log any errors during login
             Log.e("UserRepository", "Error during login", e)
+            return false
         }
-        return false
     }
+    suspend fun getLoggedInUser(): User? {
+        return userDao.getLoggedInUser() // Or fetch from SharedPreferences if not using Room
+    }
+//    fun getGoogleAccountId(context: Context): String? {
+//        val account = GoogleSignIn.getLastSignedInAccount(context)
+//        return account?.id
+//    }
+//
+////    fun saveGoogleUserId(userId: Long) {
+////        sharedPreferences.edit().putLong("google_user_id", userId).apply()
+////    }
+////
+////    fun getSavedGoogleUserId(): Long? {
+////        val userId = sharedPreferences.getLong("google_user_id", -1L)
+////        Log.d("UserRepository", "Retrieved Google user ID from SharedPreferences: $userId")
+////        return if (userId != -1L) userId else null
+////    }
+
+//    fun handleGoogleSignIn(context: Context) {
+//        val googleUserId = getGoogleAccountId(context) // Get the Google Account ID
+//        if (googleUserId != null) {
+//            val userId = kotlin.math.abs(googleUserId.hashCode().toLong()) // Ensure positive ID
+//            saveGoogleUserId(userId) // Save the userId in SharedPreferences
+//            Log.d("UserRepository", "Google User ID: $googleUserId, Saved userId: $userId")
+//        } else {
+//            Log.e("UserRepository", "Google Account ID is null")
+//        }
+//    }// Inside UserRepository
+//    fun getGoogleIdToken(context: Context): String? {
+//        val account = GoogleSignIn.getLastSignedInAccount(context)
+//        return account?.idToken
+//    }
 
 }

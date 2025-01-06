@@ -1,5 +1,6 @@
 package com.example.practice_app.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -24,5 +25,6 @@ data class User(
     //Optional confirm password property,Can be null
     val confirmPassword: String?,
     val email: String?,
+    @ColumnInfo(name = "google_token") val googleToken: String? = null, // This will store the Google ID token
     val isLoggedIn: Boolean = false
 )

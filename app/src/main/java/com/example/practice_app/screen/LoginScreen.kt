@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,6 +32,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -119,6 +121,7 @@ fun LoginScreen(navController: NavController, viewModel: UserViewModel) {
             // Create a TextButton for the forgot password action
             TextButton(onClick = {
                 // Handle forgot password action here if needed
+                navController.navigate("forgotPassword")
             }) {
                 Text("Forgot Password?")
             }
@@ -126,20 +129,22 @@ fun LoginScreen(navController: NavController, viewModel: UserViewModel) {
             // Add a vertical space of 16dp
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Create a Button for the login action
             Button(onClick = {
-                // Launch a coroutine within the current coroutine scope
                 coroutineScope.launch {
                     if (username.isEmpty()) {
                         Toast.makeText(context, "Please fill out your username", Toast.LENGTH_SHORT).show()
                     } else if (password.isEmpty()) {
                         Toast.makeText(context, "Please fill out your password", Toast.LENGTH_SHORT).show()
                     } else {
-                       viewModel.loginWithCredentials(username, password)
-
+                        val loginSuccess = viewModel.loginWithCredentials(username, password)
+                        if (loginSuccess) {
+                            viewModel.updateUsername(username) // Update the username in ViewModel
                             navController.navigate("home_screen") {
                                 popUpTo("login_screen") { inclusive = true }
                             }
+                        } else {
+                            Toast.makeText(context, "Login failed. Please check your credentials.", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
             }) {
@@ -149,31 +154,29 @@ fun LoginScreen(navController: NavController, viewModel: UserViewModel) {
             // Add a vertical space of 16dp
             Spacer(modifier = Modifier.height(16.dp))
 
-            val gso = remember {
-                GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                    .requestEmail()
-                    .build()
-            }
-
-            val signInLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) { result ->
-                if (result.resultCode == Activity.RESULT_OK) {
-                    try {
-                        viewModel.loginWithGoogle()
-                        navController.navigate("home_screen") {
-                            popUpTo("login_screen") { inclusive = true }
-                        }
-                    } catch (e: ApiException) {
-                        Toast.makeText(context, "Google sign in failed", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-            val googleSignInClient = remember {
-                GoogleSignIn.getClient(context, gso)
-            }
+//            val gso = remember {
+//                GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+//                    .requestEmail()
+//                    .build()
+//            }
+//
+//            val signInLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) { result ->
+//                if (result.resultCode == Activity.RESULT_OK) {
+//                    try {
+//                        viewModel.loginWithGoogle(context)
+//                        navController.navigate("home_screen") {
+//                            popUpTo("login_screen") { inclusive = true }
+//                        }
+//                    } catch (e: ApiException) {
+//                        Toast.makeText(context, "Google sign in failed", Toast.LENGTH_SHORT).show()
+//                    }
+//                }
+//            }
+//            val googleSignInClient = remember {
+//                GoogleSignIn.getClient(context, gso)
+//            }
             // Google sign-in button
             Button(onClick = {
-                val intent = googleSignInClient.signInIntent
-                signInLauncher.launch(intent)
             }) {
                 // Google icon
                 Icon(

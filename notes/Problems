@@ -39,3 +39,89 @@ the API call using Retrofit.
         return userRepository.loginUser(username, password)
 
     }
+
+    ------------------------------------------------------------------------------------------
+
+I had a problem were the username for google, also i am having a problem with once i am signed in with google it doesnt
+want to sign out.
+
+Also the profile pictture wont update based on each account, It will only change under android username and password
+but i cant access it because of the Signin with google is not signing out.
+
+-=----------------------------------------------------------------------------------------
+problem:
+Google name not showing up in side drawer navigation
+
+answer:the username is not being updated with the Google account's display name (googleAccount.givenName).
+
+Problem 2: Stale Profile Picture After Google Sign-In
+
+When switching Google accounts, the app keeps showing the previous account's profile picture until you log out again.
+This happens because the GoogleSignIn.getLastSignedInAccount() call fetches cached data instead of refreshing the
+account state.
+
+Answer explicitly clear the GoogleSignIn cached data during logout.
+Ensure the app fetches the correct profile picture and user details after each login.
+
+(Also: username in my UserViewModel wasn't being updated correctly after logging out of a Google account and
+then logging in using regular credentials. This can happened in The HomeScreen because it was still relying on cached
+or old data. And the username is was not being reset properly after switching logins.)
+-=----------------------------------------------------------------------------------------
+
+Unable to favorite images in a google sign in
+-------------------------------------------------------------------------------------------
+
+favorites werent favoriting for android login username and password
+
+Fix: You have to do this:
+private const val BASE_URL = "http://192.168.68.118:8686"
+interface ApiService {
+
+    // Function to handle user login.
+    @POST("api/auth/login")
+    suspend fun login(@Body loginRequest: LoginRequest): Response<LoginResponse>
+
+    // Function for user signup.
+    @POST("api/auth/signup")
+    suspend fun signup(@Body signupRequest: SignupRequest): Response<SignupResponse>
+
+    // Function to fetch all images.
+    @GET("/allImages")
+    @Headers("X-Api-Key: ${com.example.practice_app.BuildConfig.API_KEY}")
+    suspend fun getAllImages(): Response<List<AllImagesItem>>
+
+    // Function to get images by category.
+    @GET("/allImages/category/{category}")
+    @Headers("X-Api-Key: ${com.example.practice_app.BuildConfig.API_KEY}")
+    suspend fun getImagesByCategory(
+        @Path("category") category: String
+    ): Response<List<AllImagesItem>>
+
+    // Function to add a favorite image.
+    @POST("/favorites/addFav")
+    @Headers("X-Api-Key: ${com.example.practice_app.BuildConfig.API_KEY}")
+    suspend fun addFavorite(
+        @Body favoriteRequest: FavoriteRequest
+    ): Response<ResponseBody>
+    // Function to get all favorite images of a user with authType.
+    @GET("/favorites/user/{userId}")
+    @Headers("X-Api-Key: ${com.example.practice_app.BuildConfig.API_KEY}")
+    suspend fun getUserFavorites(
+        @Path("userId") userId: Long
+    ): Response<List<AllImagesItem>>
+
+    // Function to delete a favorite image.
+    @DELETE("/favorites/delete/{userId}/{imageId}")
+    @Headers("X-Api-Key: ${com.example.practice_app.BuildConfig.API_KEY}")
+    suspend fun deleteFavorite(
+        @Path("userId") userId: Long,
+        @Path("imageId") imageId: Long
+    ): Response<ResponseBody>
+
+    // Function to handle forgot password requests.
+    @POST("api/auth/forgot-password")
+    suspend fun forgotPassword(@Body request: ForgotPasswordRequest): ResponseBody
+}
+
+
+------------------------------------------------------------------------------------------

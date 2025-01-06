@@ -1,21 +1,51 @@
 package com.example.practice_app.models
 
+import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.practice_app.db.User
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 // Define UserViewModel class that extends ViewModel and takes a UserRepository as a parameter
 class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
     // Mutable state for username
-    var username = mutableStateOf("")
+    val username = mutableStateOf("")
     // Mutable state for email
     var email = mutableStateOf("")
     // Mutable state for password
     var password = mutableStateOf("")
     // Mutable state for confirm password
     var confirmPassword = mutableStateOf("")
+
+    fun updateUsername(newUsername: String) {
+        username.value = newUsername
+    }
+
+    fun getGoogleAccountId(context: Context): String? {
+        val account = GoogleSignIn.getLastSignedInAccount(context)
+        return account?.id
+    }
+
+    init {
+        // Load the logged-in username when ViewModel is created
+        username.value = userRepository.getLoggedInUsername()
+    }
+
+    private val _isDarkModeEnabled = MutableStateFlow(userRepository.isDarkModeEnabled())
+    val isDarkModeEnabled: StateFlow<Boolean> = _isDarkModeEnabled.asStateFlow()
+
+    // Toggle dark mode and save the preference
+    fun toggleDarkMode(enabled: Boolean) {
+        _isDarkModeEnabled.value = enabled
+        userRepository.saveDarkModePreference(enabled)
+    }
 
     // Suspend function to handle sign up click
     suspend fun onSignUpClick() {
@@ -38,75 +68,91 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
 
     // Function to get the logged-in username
     fun getLoggedInUsername(): String {
-        // Return the logged-in username from the repository
         return userRepository.getLoggedInUsername()
     }
 
-    // Function to handle Google sign-in
-    fun loginWithGoogle() {
-        // Save login state as Google sign-in
-        userRepository.saveLoginState(true, isGoogleSignIn = true)
-    }
+    // Function to login with Google
+    // Function to login with Google
+//    fun loginWithGoogle(context: Context) {
+//        val googleUserId = userRepository.getGoogleAccountId(context)
+//        if (googleUserId != null) {
+//            // Fetch the Google ID token using the repository method
+//            val googleIdToken = userRepository.getGoogleIdToken(context)
+//            if (googleIdToken != null) {
+//                // Now you can use googleIdToken for whatever purpose, like saving it or verifying it with your backend
+//                Log.d("UserViewModel", "Google ID Token: $googleIdToken")
+//            } else {
+//                Log.e("UserViewModel", "Failed to fetch Google ID Token")
+//            }
+//
+//            // Proceed with Google Sign-In logic
+//            userRepository.handleGoogleSignIn(context)  // Handle Google Sign-In in Repository
+//            userRepository.saveLoginState(true, isGoogleSignIn = true)
+//            userRepository.saveGoogleUserId(googleUserId.hashCode().toLong())  // Save Google user ID if needed
+//            Log.d("UserViewModel", "Successfully logged in with Google: $googleUserId")
+//        } else {
+//            Log.e("UserViewModel", "Failed to retrieve Google User ID")
+//        }
+//    }
+
 
     // Function to check if the current login is a Google sign-in
-    fun isGoogleSignIn(): Boolean {
-        // Return whether the current login is a Google sign-in from the repository
-        return userRepository.isGoogleSignIn()
-    }
+//    fun isGoogleSignIn(): Boolean {
+//        return userRepository.isGoogleSignIn()
+//    }
 
     // Function to log out a Google-signed-in user
-    fun logoutUserGoogle() {
-        // Save login state as logged out and not Google sign-in
-        userRepository.saveLoginState(false, false)
-    }
+//    fun logoutUserGoogle() {
+//        userRepository.saveLoginState(false, false) // Reset login state
+//        username.value = "" // Clear username state
+//        email.value = ""  // Clear email if needed
+//    }
 
-    // Function to log out a user
-    fun logoutUser(username: String) {
-        // Launch a coroutine in the ViewModel scope
-        viewModelScope.launch {
-            // Update login status to false in the repository
+    // Function to log out the user
+    suspend fun logoutUser(username: String) {
             userRepository.updateLoginStatus(username, false)
-            // Save login state as logged out
             userRepository.saveLoginState(false)
-        }
+            this@UserViewModel.username.value = "" // Clear username
     }
 
     // Function to get the logged-in user
     fun getLoggedInUser() {
-        // Launch a coroutine in the ViewModel scope
         viewModelScope.launch {
-            // Get the logged-in user from the repository
             val user = userRepository.getLoggedInUser()
-            // If user exists, update the username state
             user?.let {
                 username.value = it.username ?: ""
             }
         }
     }
 
-    // Suspend function to get a username
-    suspend fun getUsername(inputUsername: String): String? {
-        // Get user from repository and return their username
-        val user = userRepository.getUser(inputUsername)
-        return user?.username
-    }
-
     // Suspend function to login with credentials
     suspend fun loginWithCredentials(username: String, password: String): Boolean {
-        // Call repository's loginUser function and return its result
         return userRepository.loginUser(username, password)
     }
 
-    // Suspend function to get a user's password
-    suspend fun getPassword(inputUsername: String): String? {
-        // Get user from repository and return their password
-        val user = userRepository.getUser(inputUsername)
-        return user?.password
-    }
+    // Function to get the saved token from SharedPreferences (if JWT is used)
+//    fun getToken(): String? {
+//        return userRepository.getToken()
+//    }
 
     // Suspend function to update a user's password
     suspend fun updatePassword(username: String, oldPassword: String, newPassword: String) {
-        // Call repository's function to update the password
         userRepository.getUserByPassword(username, oldPassword, newPassword)
     }
+
+    // For Google Sign-In
+//    fun updateGoogleUser(account: GoogleSignInAccount) {
+//        val googleToken = account.idToken
+//        val user = User(
+//            username = account.displayName ?: "Guest",
+//            googleToken = googleToken,
+//            password = null,  // No password needed for Google sign-in
+//            confirmPassword = null,  // No confirmPassword needed
+//            email = account.email  // You can use the Google account email if needed
+//        )
+//        viewModelScope.launch {
+//            userRepository.insert(user)
+//        }
+//    }
+
 }
