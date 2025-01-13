@@ -75,9 +75,10 @@ data class SignupRequest(
 
 // Data class for signup response. Usually contains a success message.
 data class SignupResponse(
-    // The message returned from the server after signup.
-    val message: String
+    val message: String,
+    val userId: Long
 )
+
 
 // Data class for login request. Contains username and password.
 data class LoginRequest(val username: String, val password: String)

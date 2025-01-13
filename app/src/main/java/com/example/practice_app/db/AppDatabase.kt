@@ -13,7 +13,7 @@ import com.example.practice_app.models.FavoriteImage
 
 /**BIG SIDE NOTE!: Room specifically requires the database class to be abstract. Attempting to make
  * it concrete would lead to runtime errors.*/
-@Database(entities = [User::class, FavoriteImage::class], version = 13)
+@Database(entities = [User::class, FavoriteImage::class], version = 14)
 abstract class AppDatabase : RoomDatabase() {
 
     //Declare an abstract function that returns the DAO

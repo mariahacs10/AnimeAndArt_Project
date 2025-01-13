@@ -70,6 +70,7 @@ android {
 }
 
 dependencies {
+
     implementation ("com.google.accompanist:accompanist-systemuicontroller:0.28.0")
     implementation("androidx.core:core-ktx:1.9.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
@@ -81,8 +82,10 @@ dependencies {
     implementation("androidx.compose.material3:material3:1.2.0")
     // Add this line in your dependencies block
     implementation("androidx.compose.material:material:1.6.1")
+    implementation("androidx.test.ext:junit-ktx:1.2.1")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation ("androidx.room:room-testing:2.5.2") // For Room database testing
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.02.01"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")

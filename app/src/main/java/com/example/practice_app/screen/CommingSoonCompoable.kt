@@ -17,6 +17,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.practice_app.R
+import com.example.practice_app.db.AppDatabase
+import com.example.practice_app.db.RetrofitClient
+import com.example.practice_app.models.FavoritesRepository
 import com.example.practice_app.models.UserRepository
 import com.example.practice_app.models.UserViewModel
 import com.example.practice_app.models.UserViewModelFactory
@@ -24,10 +27,14 @@ import com.example.practice_app.models.UserViewModelFactory
 @Composable
 fun CommingSoonComposable() {
     val context = LocalContext.current
-    val userRepository = UserRepository(context)  // Ensure UserRepository is properly initialized
+    val database = AppDatabase.getDatabase(context)
+    val favoriteImageDao = database.favoriteImageDao()
+    val apiService = RetrofitClient.createApiService
+    val userRepository = UserRepository(context, favoriteImageDao)  // Ensure UserRepository is properly initialized
+    val favoritesRepository = FavoritesRepository(apiService, favoriteImageDao, userRepository)
 
     val userViewModel: UserViewModel = viewModel(
-        factory = UserViewModelFactory(userRepository)
+        factory = UserViewModelFactory(userRepository, favoritesRepository)
     )
     val isDarkTheme by userViewModel.isDarkModeEnabled.collectAsState()
 

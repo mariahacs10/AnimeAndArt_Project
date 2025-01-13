@@ -5,19 +5,21 @@ import android.content.SharedPreferences
 import android.util.Log
 import com.example.practice_app.db.ApiService
 import com.example.practice_app.db.AppDatabase
+import com.example.practice_app.db.FavoriteImageDao
 import com.example.practice_app.db.LoginRequest
 import com.example.practice_app.db.RetrofitClient
 import com.example.practice_app.db.SignupRequest
 import com.example.practice_app.db.User
 import com.google.android.gms.auth.api.signin.GoogleSignIn
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 //Define a UserRepository class that takes  a Context as a parameter
-class UserRepository(context: Context) {
+class UserRepository(context: Context, private val favoriteImageDao: FavoriteImageDao) {
     //get an instance of the AppDatabase
     private val db = AppDatabase.getDatabase(context)
     //Get the UserDao from the database
     private val userDao = db.userDao()
-
 
 
     //suspend function to insert a user into the database
@@ -40,11 +42,6 @@ class UserRepository(context: Context) {
         userDao.updateLoginStatus(username, isLoggedIn)
     }
 
-    //suspend function to get the currently logged in user from the database
-//    suspend fun getLoggedInUser(): User? {
-//        return userDao.getLoggedInUser()
-//    }
-
     //Function to save login state in shared preferences
     private val sharedPreferences: SharedPreferences = context.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
 
@@ -52,7 +49,6 @@ class UserRepository(context: Context) {
     fun saveLoginState(isLoggedIn: Boolean, username: String = "") {
         sharedPreferences.edit()
             .putBoolean("isLoggedIn", isLoggedIn)
-           // .putBoolean("isGoogleSignIn", isGoogleSignIn)
             .putString("loggedInUsername", username)
             .apply()
     }
@@ -97,55 +93,171 @@ class UserRepository(context: Context) {
     //Create an instance of ApiService using RetrofitClient
     private val apiService: ApiService = RetrofitClient.createApiService
 
-    //Suspend function to sign up a user
     suspend fun signupUser(username: String, password: String, confirmPassword: String, email: String): Boolean {
-        try {
-            //make an API call to sign up the user
+        return try {
+            // Make an API call to sign up the user
             val response = apiService.signup(SignupRequest(username, password, email))
-            if (response.isSuccessful) {
-                //if successful, insert the user to the local database
+            if (response.isSuccessful && response.body() != null) {
+                val signupResponse = response.body()!!
+
+                // Save the userId from the response
+                saveUserId(signupResponse.userId)
+
+                // Insert the user into the local database
                 insert(User(username = username, password = password, confirmPassword = confirmPassword, email = email))
-                return true
+
+                Log.d("UserRepository", "Signup successful: ${signupResponse.message}")
+                true
+            } else {
+                // Log the error response
+                Log.e("UserRepository", "Signup failed: ${response.errorBody()?.string()}")
+                false
             }
         } catch (e: Exception) {
-            //Log any errors during signup
+            // Log any errors during the signup process
             Log.e("UserRepository", "Error during signup", e)
+            false
         }
-        return false
     }
+
+
     // Save userId in SharedPreferences
     fun saveUserId(userId: Long) {
         sharedPreferences.edit().putLong("user_id", userId).apply()
     }
-
-    // Retrieve userId from SharedPreferences
-    fun getUserId(): Long? {
-        return if (sharedPreferences.contains("user_id")) {
-            sharedPreferences.getLong("user_id", -1)
-        } else null
+    fun initializeUserState() {
+        val userId = getUserId()
+        if (userId != null && userId > 0) {
+            saveLoginState(true, getLoggedInUsername())
+        }
     }
-    suspend fun loginUser(username: String, password: String): Boolean {
-        try {
+
+    // Fixed implementation
+    fun getUserId(): Long? {
+        val userId = sharedPreferences.getLong("user_id", -1L)
+        return if (userId > 0) userId else null
+    }
+
+//    suspend fun loginUser(username: String, password: String): Boolean {
+//        try {
+//            val response = apiService.login(LoginRequest(username, password))
+//            if (response.isSuccessful && response.body() != null) {
+//                val loginResponse = response.body()!!
+//                val token = loginResponse.token
+//                val userId = loginResponse.userId  // Retrieve the userId
+//
+//                saveToken(token)
+//                saveUserId(userId)  // Save userId for future API calls
+//                updateLoginStatus(username, true)
+//                saveLoginState(true, username)
+//                return true
+//            } else {
+//                Log.e("UserRepository", "Login failed: ${response.errorBody()?.string()}")
+//                return false
+//            }
+//        } catch (e: Exception) {
+//            Log.e("UserRepository", "Error during login", e)
+//            return false
+//        }
+//    }
+
+    fun isValidUser(): Boolean {
+        val userId = getUserId()
+        return userId != null && userId > 0 && !getToken().isNullOrEmpty()
+    }
+
+    private val _userState = MutableStateFlow<Pair<Long?, Boolean>>(null to false)
+    val userState = _userState.asStateFlow()
+    init {
+        // Initialize state
+        updateUserState()
+    }
+
+    private fun updateUserState() {
+        val userId = getUserId()
+        val isLoggedIn = isUserLoggedIn()
+        _userState.value = userId to isLoggedIn
+    }
+
+    suspend fun loginUser(username: String, password: String): Result<Boolean> {
+        return try {
             val response = apiService.login(LoginRequest(username, password))
             if (response.isSuccessful && response.body() != null) {
                 val loginResponse = response.body()!!
-                val token = loginResponse.token
-                val userId = loginResponse.userId  // Retrieve the userId
-
-                saveToken(token)
-                saveUserId(userId)  // Save userId for future API calls
+                saveToken(loginResponse.token)
+                saveUserId(loginResponse.userId)
                 updateLoginStatus(username, true)
                 saveLoginState(true, username)
-                return true
+                updateUserState()  // Update state after login
+                Result.success(true)
             } else {
-                Log.e("UserRepository", "Login failed: ${response.errorBody()?.string()}")
-                return false
+                Result.failure(Exception("Login failed: ${response.errorBody()?.string()}"))
             }
         } catch (e: Exception) {
-            Log.e("UserRepository", "Error during login", e)
-            return false
+            Result.failure(e)
         }
     }
+
+
+//    fun logout() {
+//        saveLoginState(false)
+//        saveUserId(-1) // Clear the stored userId
+//        Log.d("UserRepository", "User logged out: userId cleared")
+//    }
+
+    suspend fun logout() {
+        try {
+            val userId = getUserId()
+            // Clear favorites only if userId exists
+            userId?.let {
+                favoriteImageDao.clearFavoritesForUser(it)
+            }
+
+            // Clear all user-related data atomically
+            sharedPreferences.edit().apply {
+                remove("user_id")
+                remove("jwt_token")
+                remove("isLoggedIn")
+                remove("loggedInUsername")
+                apply()
+            }
+            updateUserState()  // Update state after logout
+            Log.d("UserRepository", "User logged out: userId and preferences cleared")
+        } catch (e: Exception) {
+            Log.e("UserRepository", "Error during logout", e)
+            // Ensure preferences are cleared even if favorites clearing fails
+            sharedPreferences.edit().clear().apply()
+            updateUserState()  // Update state after logout
+        }
+    }
+
+    // Add validation method
+//    fun isValidUser(): Boolean {
+//        return getUserId() != null && getUserId()!! > 0
+//    }
+
+//    suspend fun loginUser(username: String, password: String): Boolean {
+//        try {
+//            val response = apiService.login(LoginRequest(username, password))
+//            if (response.isSuccessful && response.body() != null) {
+//                val loginResponse = response.body()!!
+//                val token = loginResponse.token
+//                val userId = loginResponse.userId  // Retrieve the userId
+//
+//                saveToken(token)
+//                saveUserId(userId)  // Save userId for future API calls
+//                updateLoginStatus(username, true)
+//                saveLoginState(true, username)
+//                return true
+//            } else {
+//                Log.e("UserRepository", "Login failed: ${response.errorBody()?.string()}")
+//                return false
+//            }
+//        } catch (e: Exception) {
+//            Log.e("UserRepository", "Error during login", e)
+//            return false
+//        }
+//    }
     suspend fun getLoggedInUser(): User? {
         return userDao.getLoggedInUser() // Or fetch from SharedPreferences if not using Room
     }

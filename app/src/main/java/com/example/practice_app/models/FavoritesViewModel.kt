@@ -9,6 +9,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.practice_app.dataForAllImages.AllImagesItem
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
@@ -31,7 +34,7 @@ Caching Favorites Locally: The cacheFavoritesLocally function stores fetched fav
 // The FavoritesViewModel class is responsible for managing the favorites data and actions for the UI.
 // It interacts with the FavoritesRepository to fetch, add, and remove favorite images.
 // This class extends ViewModel, allowing it to survive configuration changes.
-class FavoritesViewModel(private val repository: FavoritesRepository) : ViewModel() {
+class FavoritesViewModel(private val repository: FavoritesRepository,     private val userRepository: UserRepository) : ViewModel() {
 
     private val _itemToDelete = MutableLiveData<AllImagesItem?>()
     val itemToDelete: LiveData<AllImagesItem?> = _itemToDelete
@@ -39,90 +42,101 @@ class FavoritesViewModel(private val repository: FavoritesRepository) : ViewMode
     private val _favorites = MutableLiveData<List<AllImagesItem>>()
     val favorites: LiveData<List<AllImagesItem>> = _favorites
 
+    private val _isFavorite = MutableStateFlow<Boolean>(false)
+    val isFavorite: StateFlow<Boolean> = _isFavorite.asStateFlow()
+
     private val _isDeleteDialogVisible = MutableLiveData<Boolean>()
     val isDeleteDialogVisible: LiveData<Boolean> = _isDeleteDialogVisible
 
     private val _selectedImages = MutableLiveData<List<AllImagesItem>>(emptyList())
     val selectedImages: LiveData<List<AllImagesItem>> = _selectedImages
+    init {
+        initializeUserFavorites()
+    }
+    private fun isValidUserId(userId: Long?): Boolean {
+        return userId != null && userId > 0
+    }
 
-    // Function to fetch the favorites for a user
-    fun fetchFavorites(userId: Long) {
+
+    // Fix for initializeUserFavorites()
+    private fun initializeUserFavorites() {
         viewModelScope.launch {
             try {
-                // Fetch favorites from server and handle local caching
-                val favoritesFromServer = repository.getFavoritesFromServer(userId)
-                _favorites.postValue(favoritesFromServer)
+                val userId = userRepository.getUserId()
+                if (isValidUserId(userId)) {
+                    fetchFavorites(userId)
+                } else {
+                    _favorites.postValue(emptyList())
+                }
             } catch (e: Exception) {
-                Log.e("FavoritesViewModel", "Error fetching favorites: ${e.message}")
-                // If fetching from server fails, fallback to cached favorites
+                Log.e("FavoritesViewModel", "Error initializing favorites", e)
+                _favorites.postValue(emptyList())
+            }
+        }
+    }
+
+    // Fix: Modified version that doesn't use invalid userId
+    suspend fun clearFavoritesOnLogout() {
+        _favorites.postValue(emptyList())
+        _selectedImages.postValue(emptyList())
+        // No need to call repository.clearFavoritesForUser with invalid ID
+    }
+
+    // Update the fetchFavorites signature to accept nullable Long
+    fun fetchFavorites(userId: Long?) {
+        if (userId == null || !isValidUserId(userId)) {
+            Log.e("FavoritesViewModel", "Invalid userId: $userId. Skipping fetch.")
+            return
+        }
+        viewModelScope.launch {
+            try {
+                repository.refreshFavoritesForUser(userId)
                 val cachedFavorites = repository.getCachedFavorites(userId)
                 _favorites.postValue(cachedFavorites)
-            }
-        }
-    }
-
-//    // Function to fetch favorites for a Google user using the stored user ID
-//    fun fetchFavoritesForGoogleUser(context: Context) {
-//        val userRepository = UserRepository(context)
-//        val userId = userRepository.getSavedGoogleUserId()
-//
-//        if (userId != null) {
-//            Log.d("FavoritesViewModel", "Fetching favorites for local Google user ID: $userId")
-//            viewModelScope.launch {
-//                try {
-//                    val favorites = repository.getCachedFavorites(userId)
-//                    _favorites.postValue(favorites)
-//                    Log.d("FavoritesViewModel", "Fetched local favorites: $favorites")
-//                } catch (e: Exception) {
-//                    Log.e("FavoritesViewModel", "Error fetching local favorites: ${e.message}")
-//                }
-//            }
-//        } else {
-//            Log.e("FavoritesViewModel", "Saved Google user ID is null or invalid")
-//        }
-//    }
-
-    // Function to add an image to the user's favorites
-    fun addFavorite(imageId: Long, imageUrl: String, description: String, userId: Long) {
-        viewModelScope.launch {
-            try {
-                val result = repository.addFavorite(imageId, userId, imageUrl, description)
-                if (result.isSuccess) {
-                    fetchFavorites(userId)  // Refresh the favorites list after adding
-                } else {
-                    Log.e("FavoritesViewModel", "Failed to add favorite: ${result.exceptionOrNull()?.message}")
-                }
             } catch (e: Exception) {
-                Log.e("FavoritesViewModel", "Error adding favorite: ${e.message}")
+                Log.e("FavoritesViewModel", "Error fetching favorites: ${e.message}")
             }
         }
     }
 
-    // Function to remove a specific favorite
-    fun removeFavorite(userId: Long, imageId: Long) {
-        viewModelScope.launch {
-            try {
-                val result = repository.removeFavorite(userId, imageId)
-                if (result.isSuccess) {
-                    delay(200)  // Delay to ensure DB update is complete
-                    fetchFavorites(userId)  // Refresh the favorites list after deletion
-                } else {
-                    Log.e("FavoritesViewModel", "Failed to remove favorite: ${result.exceptionOrNull()?.message}")
+    fun addFavorite(imageId: Long, imageUrl: String, description: String) {
+        val userId = userRepository.getUserId()
+        if (isValidUserId(userId)) {
+            viewModelScope.launch {
+                try {
+                    val result = repository.addFavorite(imageId, userId!!, imageUrl, description)
+                    if (result.isSuccess) fetchFavorites(userId)
+                } catch (e: Exception) {
+                    Log.e("FavoritesViewModel", "Error adding favorite: ${e.message}")
                 }
-            } catch (e: Exception) {
-                Log.e("FavoritesViewModel", "Error removing favorite: ${e.message}")
             }
+        } else {
+            Log.e("FavoritesViewModel", "Cannot add favorite. Invalid userId.")
         }
     }
 
-    // Function to check if an image is already in the user's favorites
+    fun removeFavorite(imageId: Long) {
+        val userId = userRepository.getUserId()
+        if (isValidUserId(userId)) {
+            viewModelScope.launch {
+                try {
+                    val result = repository.removeFavorite(userId!!, imageId)
+                    if (result.isSuccess) fetchFavorites(userId)
+                } catch (e: Exception) {
+                    Log.e("FavoritesViewModel", "Error removing favorite: ${e.message}")
+                }
+            }
+        } else {
+            Log.e("FavoritesViewModel", "Cannot remove favorite. Invalid userId.")
+        }
+    }
+
     fun isFavorite(imageId: Long): Boolean {
         return runBlocking {
             repository.isFavoriteCached(imageId)
         }
     }
 
-    // Function to toggle the selection status of an image for bulk deletion
     fun toggleSelection(image: AllImagesItem) {
         val currentSelection = _selectedImages.value ?: emptyList()
         _selectedImages.value = if (currentSelection.contains(image)) {
@@ -132,30 +146,136 @@ class FavoritesViewModel(private val repository: FavoritesRepository) : ViewMode
         }
     }
 
-    // Function to show the bulk delete confirmation dialog
     fun showBulkDeleteDialog() {
         _isDeleteDialogVisible.value = true
     }
 
-    // Function to hide the delete confirmation dialog
     fun hideDeleteDialog() {
         _isDeleteDialogVisible.value = false
     }
 
-    // Function to perform bulk deletion of selected favorites
-    fun bulkDeleteSelectedFavorites(userId: Long) {
+    // Fix for bulkDeleteSelectedFavorites()
+    fun bulkDeleteSelectedFavorites() {
+        val userId = userRepository.getUserId()
+        if (userId == null || !isValidUserId(userId)) {
+            Log.e("FavoritesViewModel", "Cannot perform bulk delete. Invalid userId.")
+            return
+        }
+
         val imagesToDelete = _selectedImages.value ?: return
         viewModelScope.launch {
             try {
                 imagesToDelete.forEach { image ->
                     repository.removeFavorite(userId, image.allImagesId.toLong())
                 }
-                fetchFavorites(userId)  // Refresh after bulk delete
-                _selectedImages.value = emptyList()  // Clear selection
-                hideDeleteDialog()  // Hide the delete dialog
+                fetchFavorites(userId)
+                _selectedImages.value = emptyList()
             } catch (e: Exception) {
-                Log.e("FavoritesViewModel", "Error deleting favorites: ${e.message}")
+                Log.e("FavoritesViewModel", "Error during bulk deletion: ${e.message}")
             }
         }
     }
+
+
+
+//    suspend fun clearFavoritesOnLogout() {
+//        _favorites.value = emptyList() // Reset LiveData
+//        _selectedImages.value = emptyList() // Reset selections
+//        repository.clearFavoritesForUser(-1) // Ensure no residual local favorites exist
+//        userRepository.logout() // Reset user session
+//    }
+
+
+//
+//    fun fetchFavorites(userId: Long) {
+//        if (userId <= 0) {
+//            Log.e("FavoritesViewModel", "Invalid userId: $userId. Skipping fetch.")
+//            return
+//        }
+//        viewModelScope.launch {
+//            try {
+//                repository.refreshFavoritesForUser(userId)
+//                val cachedFavorites = repository.getCachedFavorites(userId)
+//                _favorites.postValue(cachedFavorites)
+//            } catch (e: Exception) {
+//                Log.e("FavoritesViewModel", "Error fetching favorites: ${e.message}")
+//            }
+//        }
+//    }
+//
+//
+//
+//    fun addFavorite(imageId: Long, imageUrl: String, description: String) {
+//        val userId = userRepository.getUserId()
+//        if (userId > 0) {
+//            viewModelScope.launch {
+//                try {
+//                    val result = repository.addFavorite(imageId, userId, imageUrl, description)
+//                    if (result.isSuccess) fetchFavorites(userId)
+//                } catch (e: Exception) {
+//                    Log.e("FavoritesViewModel", "Error adding favorite: ${e.message}")
+//                }
+//            }
+//        }
+//    }
+//
+//    fun removeFavorite(imageId: Long) {
+//        val userId = userRepository.getUserId()
+//        if (userId > 0) {
+//            viewModelScope.launch {
+//                try {
+//                    val result = repository.removeFavorite(userId, imageId)
+//                    if (result.isSuccess) fetchFavorites(userId)
+//                } catch (e: Exception) {
+//                    Log.e("FavoritesViewModel", "Error removing favorite: ${e.message}")
+//                }
+//            }
+//        }
+//    }
+//
+//    // Function to check if an image is already in the user's favorites
+//    fun isFavorite(imageId: Long): Boolean {
+//        return runBlocking {
+//            repository.isFavoriteCached(imageId)
+//        }
+//    }
+//
+//    // Function to toggle the selection status of an image for bulk deletion
+//    fun toggleSelection(image: AllImagesItem) {
+//        val currentSelection = _selectedImages.value ?: emptyList()
+//        _selectedImages.value = if (currentSelection.contains(image)) {
+//            currentSelection - image
+//        } else {
+//            currentSelection + image
+//        }
+//    }
+//
+//    // Function to show the bulk delete confirmation dialog
+//    fun showBulkDeleteDialog() {
+//        _isDeleteDialogVisible.value = true
+//    }
+//
+//    // Function to hide the delete confirmation dialog
+//    fun hideDeleteDialog() {
+//        _isDeleteDialogVisible.value = false
+//    }
+//
+//    // Function to perform bulk deletion of selected favorites
+//    fun bulkDeleteSelectedFavorites() {
+//        val userId = userRepository.getUserId()
+//        if (userId > 0) {
+//            val imagesToDelete = _selectedImages.value ?: return
+//            viewModelScope.launch {
+//                try {
+//                    imagesToDelete.forEach { image ->
+//                        repository.removeFavorite(userId, image.allImagesId.toLong())
+//                    }
+//                    fetchFavorites(userId)
+//                    _selectedImages.value = emptyList() // Clear selections
+//                } catch (e: Exception) {
+//                    Log.e("FavoritesViewModel", "Error during bulk deletion: ${e.message}")
+//                }
+//            }
+//        }
+//    }
 }

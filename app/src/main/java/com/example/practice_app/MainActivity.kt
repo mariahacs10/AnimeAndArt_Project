@@ -1,6 +1,7 @@
 package com.example.practice_app
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.DrawerValue
@@ -11,8 +12,11 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -23,6 +27,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.practice_app.db.AppDatabase
 import com.example.practice_app.db.RetrofitClient
+import com.example.practice_app.models.FavoritesRepository
 import com.example.practice_app.models.FavoritesViewModel
 import com.example.practice_app.models.FavoritesViewModelFactory
 import com.example.practice_app.models.ForgotPasswordViewModel
@@ -33,52 +38,55 @@ import com.example.practice_app.navigation.NavRoutes
 import com.example.practice_app.screen.*
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.android.gms.auth.api.signin.GoogleSignIn
+import kotlinx.coroutines.runBlocking
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val userRepository = UserRepository(applicationContext)
-        val viewModelFactory = UserViewModelFactory(userRepository)
-        val userViewModel = ViewModelProvider(this, viewModelFactory)
-            .get(UserViewModel::class.java)
+        // Initialize dependencies
         val database = AppDatabase.getDatabase(applicationContext)
         val favoriteImageDao = database.favoriteImageDao()
         val apiService = RetrofitClient.createApiService
-        val favoritesViewModelFactory = FavoritesViewModelFactory(apiService, favoriteImageDao)
+        val userRepository = UserRepository(applicationContext, favoriteImageDao)
+        val favoritesRepository = FavoritesRepository(apiService, favoriteImageDao, userRepository)
+        val userViewModelFactory = UserViewModelFactory(userRepository, favoritesRepository)
+        val favoritesViewModelFactory = FavoritesViewModelFactory(apiService, favoriteImageDao, userRepository)
+        val userViewModel = ViewModelProvider(this, userViewModelFactory).get(UserViewModel::class.java)
 
         setContent {
+            // Collect states
             val isDarkModeEnabled by userViewModel.isDarkModeEnabled.collectAsState()
+            val userState by userRepository.userState.collectAsState()
+            val (userId, isUserLoggedIn) = userState
+
+            // Handle corrupted session
+            LaunchedEffect(userState) {
+                if (isUserLoggedIn && (userId == null || userId <= 0)) {
+                    Log.e("MainActivity", "Corrupted session detected. Logging out.")
+                    userRepository.logout()
+                }
+            }
 
             MaterialTheme(
                 colorScheme = if (isDarkModeEnabled) darkColorScheme() else lightColorScheme()
             ) {
                 StatusBarColor(isDarkModeEnabled)
 
-                // Updated user authentication check
-                val isUserLoggedIn = userRepository.isUserLoggedIn()
-
-                // Update how we handle user IDs (assuming Long type)
-                val userId: Long = userRepository.getUserId() ?: -1L
-
-                // No Google Sign-in logic
-
-                val startDestination = when {
-                    isUserLoggedIn -> "home_screen"
-                    else -> "login_screen"
+                val (startDestination, validUserId) = when {
+                    isUserLoggedIn && userId != null && userId > 0 -> "home_screen" to userId
+                    else -> "login_screen" to null
                 }
 
                 HomeNavigation(
                     userViewModel = userViewModel,
                     startDestination = startDestination,
-                    userId = userId,
+                    userId = validUserId,
                     favoritesViewModelFactory = favoritesViewModelFactory
                 )
             }
         }
     }
 }
-
 @Composable
 fun StatusBarColor(isDarkModeEnabled: Boolean) {
     val systemUiController = rememberSystemUiController()
@@ -103,7 +111,7 @@ fun StatusBarColor(isDarkModeEnabled: Boolean) {
 fun HomeNavigation(
     userViewModel: UserViewModel,
     startDestination: String,
-    userId: Long,  // Changed from Long? to String
+    userId: Long?,  // Changed from Long? to String
     favoritesViewModelFactory: FavoritesViewModelFactory
 ) {
     val navController = rememberNavController()
@@ -114,10 +122,9 @@ fun HomeNavigation(
     NavHost(navController = navController, startDestination = startDestination) {
         // Update relevant composable routes
         composable("login_screen") {
-            LoginScreen(navController = navController, userViewModel)
+            LoginScreen(navController = navController, userViewModel, favoritesViewModel)
         }
 
-        // Update ImageDetail route
         composable(
             route = NavRoutes.ImageDetail.route,
             arguments = listOf(
@@ -130,25 +137,45 @@ fun HomeNavigation(
             val description = backStackEntry.arguments?.getString("description") ?: ""
             val imageId = backStackEntry.arguments?.getLong("imageId") ?: 0L
 
-            ImageDetailScreen(
-                imageUrl = imageUrl,
-                description = description,
-                imageId = imageId,
-                userId = userId,
-                viewModel = favoritesViewModel
-            ) {
-                navController.popBackStack()
+            // Only show ImageDetailScreen if we have a valid userId
+            if (userId != null && userId > 0) {
+                ImageDetailScreen(
+                    imageUrl = imageUrl,
+                    description = description,
+                    imageId = imageId,
+                    userId = userId,  // Pass the non-null userId
+                    viewModel = favoritesViewModel
+                ) {
+                    navController.popBackStack()
+                }
+            } else {
+                // Handle invalid user state - redirect to login
+                LaunchedEffect(Unit) {
+                    navController.navigate("login_screen") {
+                        popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                    }
+                }
             }
         }
 
-        // Update favorites screen route
+
+
         composable("favorites_screen") {
-            FavoritesScreen(
-                viewModel = favoritesViewModel,
-                userId = userId,
-                navController = navController,
-                drawerState = drawerState
-            )
+            if (userId != null && userId > 0) {
+                FavoritesScreen(
+                    viewModel = favoritesViewModel,
+                    userId = userId,  // Pass the non-null userId
+                    navController = navController,
+                    drawerState = drawerState
+                )
+            } else {
+                // Handle invalid user state - redirect to login
+                LaunchedEffect(Unit) {
+                    navController.navigate("login_screen") {
+                        popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                    }
+                }
+            }
         }
 
         // Update favorite image detail route
@@ -166,7 +193,7 @@ fun HomeNavigation(
             SignUpScreen(navController = navController, userViewModel)
         }
         composable("home_screen") {
-            HomeScreen(navController, userViewModel)
+            HomeScreen(navController, userViewModel, favoritesViewModel)
         }
         composable(NavRoutes.AnimeConvention.route) {
             AnimeConventionComposable(navController = navController)

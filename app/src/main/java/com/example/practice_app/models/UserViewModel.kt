@@ -5,16 +5,21 @@ import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.practice_app.db.FavoriteImageDao
 import com.example.practice_app.db.User
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // Define UserViewModel class that extends ViewModel and takes a UserRepository as a parameter
-class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
+class UserViewModel(private val userRepository: UserRepository,
+                    private val favoritesRepository: FavoritesRepository // Add this dependency
+) : ViewModel() {
     // Mutable state for username
     val username = mutableStateOf("")
     // Mutable state for email
@@ -23,6 +28,27 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
     var password = mutableStateOf("")
     // Mutable state for confirm password
     var confirmPassword = mutableStateOf("")
+
+    suspend fun logoutUser(favoritesViewModel: FavoritesViewModel) {
+        userRepository.logout() // Clear user data
+        favoritesViewModel.clearFavoritesOnLogout() // Clear ViewModel state
+    }
+
+
+    suspend fun loginWithCredentials(username: String, password: String): Result<Boolean> {
+        val loginResult = userRepository.loginUser(username, password)
+        return if (loginResult.isSuccess) {
+            val userId = userRepository.getUserId()
+            if (userId != null && userId > 0) {
+                favoritesRepository.refreshFavoritesForUser(userId) // Directly refresh favorites
+                Result.success(true)
+            } else {
+                Result.failure(Exception("Invalid user ID after login"))
+            }
+        } else {
+            loginResult
+        }
+    }
 
     fun updateUsername(newUsername: String) {
         username.value = newUsername
@@ -61,10 +87,19 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
     }
 
     // Suspend function to sign up a user
-    suspend fun signupUser(username: String, password: String, confirmPassword: String, email: String): Boolean {
-        // Call repository's signupUser function and return its result
-        return userRepository.signupUser(username, password, confirmPassword, email)
+    suspend fun signupUser(username: String, password: String, confirmPassword: String, email: String): Result<Boolean> {
+        return try {
+            if (password != confirmPassword) {
+                Result.failure(Exception("Passwords do not match"))
+            } else {
+                val success = userRepository.signupUser(username, password, confirmPassword, email)
+                if (success) Result.success(true) else Result.failure(Exception("Signup failed"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
+
 
     // Function to get the logged-in username
     fun getLoggedInUsername(): String {
@@ -109,26 +144,51 @@ class UserViewModel(private val userRepository: UserRepository) : ViewModel() {
 //    }
 
     // Function to log out the user
-    suspend fun logoutUser(username: String) {
-            userRepository.updateLoginStatus(username, false)
-            userRepository.saveLoginState(false)
-            this@UserViewModel.username.value = "" // Clear username
+//    suspend fun logoutUser(username: String) {
+//        userRepository.updateLoginStatus(username, false)
+//        userRepository.saveLoginState(false)
+//    }
+    // Function to get the logged-in user ID
+    fun getLoggedInUserId(): Long? {
+        return userRepository.getUserId()
     }
 
+    // Function to log out the user
+//    suspend fun logoutUser(favoritesViewModel: FavoritesViewModel) {
+//        val userId = userRepository.getUserId()
+//        if (userId != null && userId > 0) {
+//            favoritesViewModel.clearFavoritesOnLogout(userId) // Clear cached favorites
+//        }
+//        userRepository.logout() // Clear session state
+//    }
+//
+//    suspend fun loginWithCredentials(
+//        username: String,
+//        password: String,
+//        favoritesViewModel: FavoritesViewModel
+//    ): Boolean {
+//        val loginSuccess = userRepository.loginUser(username, password)
+//        if (loginSuccess) {
+//            val userId = userRepository.getUserId()
+//            if (userId != null && userId > 0) {
+//                // Signal FavoritesViewModel to fetch fresh favorites for the logged-in user
+//                favoritesViewModel.fetchFavorites(userId)
+//            }
+//        }
+//        return loginSuccess
+//    }
+
     // Function to get the logged-in user
-    fun getLoggedInUser() {
-        viewModelScope.launch {
-            val user = userRepository.getLoggedInUser()
-            user?.let {
-                username.value = it.username ?: ""
-            }
-        }
+    suspend fun getLoggedInUser(): User? {
+        return userRepository.getLoggedInUser()
     }
 
     // Suspend function to login with credentials
-    suspend fun loginWithCredentials(username: String, password: String): Boolean {
-        return userRepository.loginUser(username, password)
-    }
+//    suspend fun loginWithCredentials(username: String, password: String): Boolean {
+//
+//        return userRepository.loginUser(username, password)
+//
+//    }
 
     // Function to get the saved token from SharedPreferences (if JWT is used)
 //    fun getToken(): String? {

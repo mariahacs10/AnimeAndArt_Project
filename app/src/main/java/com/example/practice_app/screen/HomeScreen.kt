@@ -91,7 +91,11 @@ import coil.imageLoader
 import coil.request.ImageRequest
 import coil.size.Scale
 import com.example.practice_app.R
+import com.example.practice_app.db.AppDatabase
+import com.example.practice_app.db.RetrofitClient
 import com.example.practice_app.db.User
+import com.example.practice_app.models.FavoritesRepository
+import com.example.practice_app.models.FavoritesViewModel
 import com.example.practice_app.models.UserRepository
 import com.example.practice_app.models.UserViewModel
 import com.example.practice_app.models.UserViewModelFactory
@@ -111,7 +115,7 @@ import java.io.IOException
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun HomeScreen(navController: NavController, viewModel: UserViewModel) {
+fun HomeScreen(navController: NavController, viewModel: UserViewModel,    favoritesViewModel: FavoritesViewModel) {
     val username = viewModel.username.value // Access the value directly
     val coroutineScope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -222,7 +226,7 @@ fun HomeScreen(navController: NavController, viewModel: UserViewModel) {
                         icon = { Icon(Icons.Filled.ExitToApp, contentDescription = "Logout") },
                         onClick = {
                             coroutineScope.launch {
-                                viewModel.logoutUser(username)
+                                viewModel.logoutUser(favoritesViewModel)
                                 navController.navigate("login_screen") {
                                     popUpTo("home_screen") { inclusive = true }
                                 }
@@ -426,9 +430,14 @@ fun MainScreen(navController: NavController) {
     val coroutineScope = rememberCoroutineScope()  // Remembering coroutine scope
     val context = LocalContext.current
     // Create UserRepository instance (or inject it if you’re using a dependency injection framework)
-    val userRepository = UserRepository(context)  // Ensure UserRepository is properly initialized
+    val database = AppDatabase.getDatabase(context)
+    val favoriteImageDao = database.favoriteImageDao()
+    val apiService = RetrofitClient.createApiService
+    val userRepository = UserRepository(context, favoriteImageDao)  // Ensure UserRepository is properly initialized
+    val favoritesRepository = FavoritesRepository(apiService, favoriteImageDao, userRepository)
+
     val userViewModel: UserViewModel = viewModel(
-        factory = UserViewModelFactory(userRepository)
+        factory = UserViewModelFactory(userRepository,favoritesRepository)
     )
     val isDarkTheme by userViewModel.isDarkModeEnabled.collectAsState()
     // Create an instance of UserViewModel using the custom factory

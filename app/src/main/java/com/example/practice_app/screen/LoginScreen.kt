@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.practice_app.R
+import com.example.practice_app.models.FavoritesViewModel
 import com.example.practice_app.models.UserViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -53,7 +54,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 // Define a composable function named LoginScreen
 @Composable
-fun LoginScreen(navController: NavController, viewModel: UserViewModel) {
+fun LoginScreen(navController: NavController, viewModel: UserViewModel, favoritesViewModel: FavoritesViewModel) {
     // Declare state variables for username, password, and password visibility
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -129,21 +130,34 @@ fun LoginScreen(navController: NavController, viewModel: UserViewModel) {
             // Add a vertical space of 16dp
             Spacer(modifier = Modifier.height(16.dp))
 
+
             Button(onClick = {
                 coroutineScope.launch {
-                    if (username.isEmpty()) {
-                        Toast.makeText(context, "Please fill out your username", Toast.LENGTH_SHORT).show()
-                    } else if (password.isEmpty()) {
-                        Toast.makeText(context, "Please fill out your password", Toast.LENGTH_SHORT).show()
-                    } else {
-                        val loginSuccess = viewModel.loginWithCredentials(username, password)
-                        if (loginSuccess) {
-                            viewModel.updateUsername(username) // Update the username in ViewModel
-                            navController.navigate("home_screen") {
-                                popUpTo("login_screen") { inclusive = true }
-                            }
-                        } else {
-                            Toast.makeText(context, "Login failed. Please check your credentials.", Toast.LENGTH_SHORT).show()
+                    when {
+                        username.isEmpty() -> {
+                            Toast.makeText(context, "Please fill out your username", Toast.LENGTH_SHORT).show()
+                        }
+                        password.isEmpty() -> {
+                            Toast.makeText(context, "Please fill out your password", Toast.LENGTH_SHORT).show()
+                        }
+                        else -> {
+                            val loginResult = viewModel.loginWithCredentials(username, password)
+                            loginResult.fold(
+                                onSuccess = {
+                                    viewModel.updateUsername(username) // Update the username in ViewModel
+                                    Toast.makeText(context, "Login successful!", Toast.LENGTH_SHORT).show()
+                                    navController.navigate("home_screen") {
+                                        popUpTo("login_screen") { inclusive = true }
+                                    }
+                                },
+                                onFailure = { error ->
+                                    Toast.makeText(
+                                        context,
+                                        "Login failed: ${error.message ?: "Unknown error"}",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            )
                         }
                     }
                 }

@@ -108,7 +108,7 @@ fun ZoomableImage(
     val coroutineScope = rememberCoroutineScope()
 
     // Set the initial favorite state on composable launch.
-    LaunchedEffect(Unit) {
+    LaunchedEffect(imageId) {
         isFavorite.value = viewModel.isFavorite(imageId)
     }
 
@@ -139,10 +139,10 @@ fun ZoomableImage(
                 isFavorite.value = !isFavorite.value
                 coroutineScope.launch {
                     if (isFavorite.value) {
-                        viewModel.addFavorite(imageId, imageUrl, contentDescription, userId)
+                        viewModel.addFavorite(imageId, imageUrl, contentDescription)
                         Toast.makeText(context, "Added to Favorites", Toast.LENGTH_SHORT).show()
                     } else {
-                        viewModel.removeFavorite(userId, imageId)
+                        viewModel.removeFavorite(imageId)
                         Toast.makeText(context, "Removed from Favorites", Toast.LENGTH_SHORT).show()
                     }
                 }

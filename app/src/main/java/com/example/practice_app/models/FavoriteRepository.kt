@@ -4,6 +4,11 @@ import com.example.practice_app.dataForAllImages.AllImagesItem
 import com.example.practice_app.db.ApiService
 import com.example.practice_app.db.FavoriteImageDao
 import com.example.practice_app.db.FavoriteRequest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // FavoritesRepository is a repository class responsible for handling favorite-related data.
 // It acts as a mediator between the API (remote data source) and the local Room database (local data source).
@@ -11,39 +16,182 @@ import com.example.practice_app.db.FavoriteRequest
 
 class FavoritesRepository(
     private val apiService: ApiService,
-    private val favoriteImageDao: FavoriteImageDao
+    private val favoriteImageDao: FavoriteImageDao,
+    private val userRepository: UserRepository // Add this dependency
 ) {
 
-//    // Function to add a favorite image to both the server and the local Room database.
-    // Takes the imageId, userId, imageUrl, and description as parameters.
-    suspend fun addFavorite(imageId: Long, userId: Long, imageUrl: String, description: String): Result<Boolean> {
-        return try {
-            // Create a FavoriteRequest object to send to the API.
-            val favoriteRequest = FavoriteRequest(imageId = imageId, userId = userId)
-            // Call the API to add the favorite.
-            val response = apiService.addFavorite(favoriteRequest)
+    // Fix: Modify to properly handle null case
+    private suspend fun getCurrentUserId(): Long? {
+        return userRepository.getUserId()
+    }
 
-            if (response.isSuccessful) {
-                // If successful, cache the favorite in Room database.
-                favoriteImageDao.insertFavorite(
-                    FavoriteImage(
-                        allImagesId = imageId,
-                        allImageUrl = imageUrl,
-                        allImageDescriptions = description,
-                        category = "category",  // Adjust as necessary
-                        userId = userId
-                    )
-                )
-                Result.success(true)
-            } else {
-                // Return failure if the API call was not successful.
-                Result.failure(Exception("Failed to add favorite on server"))
+    suspend fun refreshFavoritesForUser(userId: Long) {
+        if (userId <= 0) {
+            Log.e("FavoritesRepository", "Invalid userId: $userId. Skipping refresh.")
+            return
+        }
+        withContext(Dispatchers.IO) {
+            try {
+                val favoritesFromServer = getFavoritesFromServer(userId)
+                syncFavoritesWithLocalDb(userId, favoritesFromServer)
+            } catch (e: Exception) {
+                Log.e("FavoritesRepository", "Error refreshing favorites: ${e.message}")
             }
-        } catch (e: Exception) {
-            // Handle any exceptions, such as network issues.
-            Result.failure(e)
         }
     }
+
+
+
+    suspend fun getCachedFavorites(userId: Long): List<AllImagesItem> {
+        return withContext(Dispatchers.IO) {
+            try {
+                favoriteImageDao.getFavoritesForUser(userId).map { favoriteImage ->
+                    AllImagesItem(
+                        allImagesId = favoriteImage.allImagesId.toInt(),
+                        allImageUrl = favoriteImage.allImageUrl ?: "",
+                        allImageDescriptions = favoriteImage.allImageDescriptions,
+                        category = favoriteImage.category,
+                        favorites = emptyList()
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e("FavoritesRepository", "Error fetching cached favorites: ${e.message}")
+                emptyList()
+            }
+        }
+    }
+
+
+//    suspend fun getCachedFavorites(userId: Long): List<AllImagesItem> {
+//        return try {
+//            val cachedFavorites = favoriteImageDao.getFavoritesForUser(userId)
+//            Log.d("FavoritesDebug", "Cached favorites for userId $userId: ${cachedFavorites.size}")
+//            cachedFavorites.map { favoriteImage ->
+//                AllImagesItem(
+//                    allImagesId = favoriteImage.allImagesId.toInt(),
+//                    allImageUrl = favoriteImage.allImageUrl ?: "",
+//                    allImageDescriptions = favoriteImage.allImageDescriptions,
+//                    category = favoriteImage.category,
+//                    favorites = emptyList()
+//                )
+//            }
+//        } catch (e: Exception) {
+//            Log.e("FavoritesRepository", "Error fetching cached favorites: ${e.message}")
+//            emptyList() // Fallback to empty list
+//        }
+//    }
+
+    // And update the init block to handle nullable userId
+    init {
+        CoroutineScope(Dispatchers.IO).launch {
+            val currentUserId = getCurrentUserId()
+            if (currentUserId == null || currentUserId <= 0) {
+                favoriteImageDao.clearFavorites()
+            }
+        }
+    }
+//    private fun getCurrentUserId(): Long {
+//        return userRepository.getUserId() ?: -1L
+//    }
+
+    // Update isFavoriteCached to handle nullable userId
+    suspend fun isFavoriteCached(imageId: Long): Boolean {
+        val currentUserId = getCurrentUserId() ?: return false
+        val favorite = favoriteImageDao.getFavoriteById(imageId, currentUserId)  // Updated to use userId
+        return favorite != null
+    }
+//
+//    suspend fun refreshFavoritesForUser(userId: Long) {
+//        try {
+//            // Fetch favorites from the backend
+//            val favoritesFromServer = getFavoritesFromServer(userId)
+//            // Cache them locally
+//            cacheFavoritesLocally(favoritesFromServer, userId)
+//        } catch (e: Exception) {
+//            Log.e("FavoritesRepository", "Error refreshing favorites: ${e.message}")
+//            throw e // Re-throw for ViewModel to handle
+//        }
+//    }
+
+
+//    suspend fun refreshFavoritesForUser(userId: Long) {
+//        Log.d("FavoritesDebug", "Refreshing favorites for userId: $userId")
+//        val favorites = getFavoritesFromServer(userId)
+//        Log.d("FavoritesDebug", "Fetched favorites: ${favorites.size}")
+//        cacheFavoritesLocally(favorites, userId)
+//    }
+
+
+    //    // Function to add a favorite image to both the server and the local Room database.
+    // Takes the imageId, userId, imageUrl, and description as parameters.
+    suspend fun addFavorite(imageId: Long, userId: Long, imageUrl: String, description: String): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.addFavorite(FavoriteRequest(imageId, userId))
+                if (response.isSuccessful) {
+                    favoriteImageDao.insertFavorite(
+                        FavoriteImage(
+                            allImagesId = imageId,
+                            allImageUrl = imageUrl,
+                            allImageDescriptions = description,
+                            category = "default",
+                            userId = userId
+                        )
+                    )
+
+                    // Then refresh from server to ensure consistency
+                    refreshFavoritesForUser(userId)
+
+                    Result.success(true)
+                } else {
+                    Result.failure(Exception("Failed to add favorite on server"))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun removeFavorite(userId: Long, imageId: Long): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.deleteFavorite(userId, imageId)
+                if (response.isSuccessful) {
+                    favoriteImageDao.deleteFavoriteById(imageId, userId)
+                    Result.success(true)
+                } else {
+                    Result.failure(Exception("Failed to remove favorite on server"))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    private suspend fun syncFavoritesWithLocalDb(userId: Long, favorites: List<AllImagesItem>) {
+        withContext(Dispatchers.IO) {
+            // First clear only this user's favorites
+            favoriteImageDao.clearFavoritesForUser(userId)
+
+            // Then insert new favorites
+            val favoriteImages = favorites.map {
+                FavoriteImage(
+                    allImagesId = it.allImagesId.toLong(),
+                    allImageUrl = it.allImageUrl,
+                    allImageDescriptions = it.allImageDescriptions,
+                    category = it.category,
+                    userId = userId  // Ensure userId is set
+                )
+            }
+            favoriteImageDao.insertFavorites(favoriteImages)
+        }
+    }
+
+    private suspend fun getFavoritesFromServer(userId: Long): List<AllImagesItem> {
+        val response = apiService.getUserFavorites(userId)
+        return if (response.isSuccessful) response.body() ?: emptyList() else emptyList()
+    }
+
 //
 //    suspend fun getFavoritesForGoogleUser(googleUserId: String): List<AllImagesItem> {
 //        // Retrieve the consistent userId from SharedPreferences
@@ -72,98 +220,34 @@ class FavoritesRepository(
         favoriteImageDao.insertFavorite(favoriteImage) // Insert into Room database
     }
 
-
-
-
-
-
-
     // Function to get cached favorites from the local Room database for a specific user.
     // Maps the FavoriteImage objects from the database to AllImagesItem objects.
-    suspend fun getCachedFavorites(userId: Long): List<AllImagesItem> {
-        return favoriteImageDao.getFavoritesForUser(userId)
-            .map { favoriteImage ->
-                AllImagesItem(
-                    allImagesId = favoriteImage.allImagesId.toInt(),
-                    allImageUrl = favoriteImage.allImageUrl ?: "",
-                    allImageDescriptions = favoriteImage.allImageDescriptions,
-                    category = favoriteImage.category,
-                    favorites = emptyList()
-                )
-            }
-    }
-    suspend fun removeFavorite(userId: Long, imageId: Long): Result<Boolean> {
-        return try {
-            // Call the API with the correct order: userId first, then imageId
-            val response = apiService.deleteFavorite(userId, imageId)
-            if (response.isSuccessful) {
-                // If successful, remove the favorite from the local Room database.
-                favoriteImageDao.deleteFavoriteById(imageId)
-                Result.success(true)
-            } else {
-                Result.failure(Exception("Failed to remove favorite on server"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
+//    suspend fun getCachedFavorites(userId: Long): List<AllImagesItem> {
+//        val cachedFavorites = favoriteImageDao.getFavoritesForUser(userId)
+//        Log.d("FavoritesDebug", "Cached favorites for userId $userId: ${cachedFavorites.size}")
+//        return cachedFavorites.map { favoriteImage ->
+//            AllImagesItem(
+//                allImagesId = favoriteImage.allImagesId.toInt(),
+//                allImageUrl = favoriteImage.allImageUrl ?: "",
+//                allImageDescriptions = favoriteImage.allImageDescriptions,
+//                category = favoriteImage.category,
+//                favorites = emptyList()
+//            )
+//        }
+//    }
 
 
     // Function to check if a specific image is already favorited in the local Room database.
     // Returns true if the image is found, otherwise false.
-    suspend fun isFavoriteCached(imageId: Long): Boolean {
-        return favoriteImageDao.getFavoriteById(imageId) != null
-    }
+//    suspend fun isFavoriteCached(imageId: Long): Boolean {
+//        return favoriteImageDao.getFavoriteById(imageId) != null
+//    }
 
     // Function to fetch favorite images from the server and cache them in the local Room database.
     // If the server call is unsuccessful, it returns the cached favorites from Room.
-    suspend fun getFavoritesFromServer(userId: Long): List<AllImagesItem> {
-        val response = apiService.getUserFavorites(userId)
-        return if (response.isSuccessful) {
-            val allImages = response.body() ?: emptyList()
-
-            // Cache the favorites from the server in Room.
-            val favoriteImages = allImages.map { allImageItem ->
-                FavoriteImage(
-                    allImagesId = allImageItem.allImagesId.toLong(),
-                    allImageUrl = allImageItem.allImageUrl,
-                    allImageDescriptions = allImageItem.allImageDescriptions,
-                    category = allImageItem.category,
-                    userId = userId
-                )
-            }
-            favoriteImageDao.insertFavorites(favoriteImages)
-            // Return the list of favorite images from the server.
-            allImages
-        } else {
-            // If server call fails, return the cached favorites from Room.
-            favoriteImageDao.getFavoritesForUser(userId).map {
-                AllImagesItem(
-                    allImagesId = it.allImagesId.toInt(),
-                    allImageUrl = it.allImageUrl ?: "",
-                    allImageDescriptions = it.allImageDescriptions,
-                    category = it.category,
-                    favorites = emptyList()
-                )
-            }
-        }
+    suspend fun clearFavoritesForUser(userId: Long) {
+        favoriteImageDao.clearFavoritesForUser(userId)
     }
 
-    // Function to cache favorite images locally in Room.
-    // Takes a list of AllImagesItem and maps them to FavoriteImage objects for storage in Room.
-    suspend fun cacheFavoritesLocally(favorites: List<AllImagesItem>, userId: Long) {
-        val favoriteImages = favorites.map { allImageItem ->
-            FavoriteImage(
-                allImagesId = allImageItem.allImagesId.toLong(),
-                allImageUrl = allImageItem.allImageUrl,
-                allImageDescriptions = allImageItem.allImageDescriptions,
-                category = allImageItem.category,
-                userId = userId
-            )
-        }
-        // Insert the list of favorites into the Room database.
-        favoriteImageDao.insertFavorites(favoriteImages)
-    }
 }
 
