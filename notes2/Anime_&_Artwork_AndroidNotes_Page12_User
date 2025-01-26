@@ -1,0 +1,61 @@
+# User Entity Learning Topics
+
+## High-Level Categories
+1. Entity Configuration
+2. Primary Key Strategy
+3. Null Safety
+4. Authentication Data
+
+## Core Concepts Used
+
+### Room Entity Design
+1. Annotations
+  - @Entity
+  - @PrimaryKey
+  - @ColumnInfo
+
+2. Data Structure
+  - Nullable fields
+  - Default values
+  - Boolean flags
+
+### Authentication Fields
+1. User Credentials
+  - Username/password
+  - Email
+  - Login state
+
+2. OAuth Integration
+  - Google token
+  - Third-party auth
+  - Token storage
+
+## Suggested Study Order
+
+1. Basic Entity Setup
+  - Table configuration
+  - Primary keys
+  - Required fields
+
+2. Authentication Design
+  - Credential storage
+  - OAuth handling
+  - Session management
+
+3. Advanced Features
+  - Column customization
+  - Null safety
+  - Default values
+
+## Key Technologies
+- Room Database
+- Kotlin Data Classes
+- SQLite
+- OAuth
+
+## Further Reading
+1. Entity Design Patterns
+2. Authentication Storage
+3. Data Security
+4. Nullable Properties
+5. Primary Key Strategies

@@ -1,0 +1,92 @@
+# MainActivity Learning Topics
+
+## High-Level Categories
+1. Android Application Architecture
+2. Jetpack Compose UI
+3. Navigation
+4. State Management
+5. Dependency Injection
+6. Theme Management
+
+## Android/Kotlin Concepts Used
+
+### Jetpack Compose
+1. Core Components
+   - ComponentActivity
+   - Composable functions
+   - Material3 theming
+   - State management
+
+2. UI Elements
+   - Navigation
+   - Theme customization
+   - Status bar handling
+
+### Architecture Components
+1. ViewModel
+   - ViewModelFactory
+   - State handling
+   - Dependency injection
+
+2. Navigation
+   - NavController
+   - Route management
+   - Deep linking
+
+### State Management
+1. Compose State
+   - collectAsState
+   - remember
+   - mutableStateOf
+
+2. Coroutines
+   - LaunchedEffect
+   - StateFlow
+
+### Material Design
+1. Theme Components
+   - MaterialTheme
+   - Color schemes
+   - Dark mode
+
+## Suggested Study Order
+
+1. Basic Concepts
+   - Activity Lifecycle
+   - Compose Basics
+   - Material Design
+
+2. State Management
+   - StateFlow
+   - Compose State
+   - ViewModel Integration
+
+3. Navigation
+   - NavController
+   - Route Management
+   - Arguments
+
+4. Architecture
+   - Dependency Injection
+   - ViewModel Pattern
+   - Repository Pattern
+
+5. Advanced Topics
+   - Deep Linking
+   - State Restoration
+   - UI Testing
+
+## Key Technologies
+- Jetpack Compose
+- Material3
+- Navigation Component
+- ViewModel
+- StateFlow
+- SystemUiController
+
+## Further Reading
+1. Compose UI Architecture
+2. State Management Patterns
+3. Navigation in Compose
+4. ViewModel with Compose
+5. Material3 Implementation

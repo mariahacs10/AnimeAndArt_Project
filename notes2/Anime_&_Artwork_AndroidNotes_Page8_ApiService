@@ -1,0 +1,79 @@
+# ApiService Learning Topics
+
+## High-Level Categories
+1. REST API Design
+2. Authentication
+3. Request/Response Modeling
+4. Retrofit Annotations
+5. API Security
+
+## Core Concepts Used
+
+### Retrofit Annotations
+1. HTTP Methods
+  - @GET, @POST, @DELETE
+  - Path parameters
+  - Headers
+
+2. Data Modeling
+  - Request bodies
+  - Response handling
+  - Suspending functions
+
+### Authentication & Security
+1. Token Management
+  - JWT handling
+  - API key headers
+  - User authentication
+
+2. Request Structure
+  - User credentials
+  - Favorite operations
+  - Password reset
+
+### Data Classes
+1. Request Models
+  - Login/Signup
+  - Favorites
+  - Password reset
+
+2. Response Models
+  - Authentication tokens
+  - User data
+  - Image data
+
+## Suggested Study Order
+
+1. REST Fundamentals
+  - HTTP methods
+  - Endpoints
+  - Status codes
+
+2. Authentication
+  - Token-based auth
+  - API keys
+  - Security headers
+
+3. Data Transfer
+  - Request/Response models
+  - Serialization
+  - Error handling
+
+4. Advanced Features
+  - Coroutines
+  - Response mapping
+  - Header management
+
+## Key Technologies
+- Retrofit
+- Kotlin Data Classes
+- Coroutines
+- HTTP Methods
+- JWT
+
+## Further Reading
+1. REST API Design
+2. Authentication Patterns
+3. API Versioning
+4. Error Handling
+5. Security Best Practices

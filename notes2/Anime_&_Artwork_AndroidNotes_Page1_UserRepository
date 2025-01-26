@@ -1,0 +1,99 @@
+# UserRepository Learning Topics
+
+## High-Level Categories
+1. Authentication & Authorization
+2. Data Persistence
+3. State Management
+4. Error Handling
+5. Concurrency
+6. Network Operations
+
+## Android/Kotlin Concepts Used
+
+### Core Patterns
+- Repository Pattern
+- Single Source of Truth
+- Dependency Injection (Constructor-based)
+- Observer Pattern (via StateFlow)
+
+### Data Management
+1. Room Database
+   - Suspend functions
+   - DAO (Data Access Object)
+   - Entity relationships
+
+2. SharedPreferences
+   - Key-value storage
+   - Atomic operations
+   - Editor transactions
+
+### Concurrency
+1. Coroutines
+   - suspend functions
+   - Error handling with try-catch
+   - Scope management
+
+2. StateFlow
+   - Reactive programming
+   - State management
+   - Threading considerations
+
+### Authentication
+1. JWT (JSON Web Token)
+   - Token storage
+   - Session management
+   - Secure preferences
+
+### Error Handling
+1. Kotlin Result class
+2. Exception handling
+3. Nullable types
+4. Safe calls (?.)
+5. Elvis operator (?:)
+
+## Suggested Study Order
+
+1. Basic Concepts
+   - Kotlin Fundamentals
+   - Android Context
+   - Repository Pattern
+
+2. Data Storage
+   - SharedPreferences
+   - Room Database
+   - SQLite basics
+
+3. Asynchronous Programming
+   - Coroutines
+   - suspend functions
+   - Dispatchers
+
+4. State Management
+   - StateFlow
+   - MutableStateFlow
+   - Flow operators
+
+5. Authentication
+   - JWT concepts
+   - Secure storage
+   - Session management
+
+6. Advanced Topics
+   - Atomic operations
+   - Transaction management
+   - Error handling patterns
+
+## Key Technologies Used
+- Room Database (Android Architecture Components)
+- Retrofit (Network calls)
+- SharedPreferences (Android Data Storage)
+- Kotlin Coroutines (Concurrency)
+- StateFlow (Reactive Programming)
+- JWT (Authentication)
+
+## Further Reading Topics
+1. SOLID Principles in Android
+2. Clean Architecture
+3. Dependency Injection
+4. Unit Testing Repositories
+5. Android Security Best Practices

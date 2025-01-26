@@ -1,0 +1,61 @@
+# FavoriteImage Entity Learning Topics
+
+## High-Level Categories
+1. Room Database
+2. Entity Design
+3. Primary Keys
+4. Data Relationships
+
+## Core Concepts Used
+
+### Room Architecture
+1. Entity Annotations
+  - @Entity
+  - @PrimaryKey
+  - Table configuration
+
+2. Database Structure
+  - Table design
+  - Column types
+  - Foreign keys
+
+### Data Modeling
+1. Entity Properties
+  - Primary key strategy
+  - Field types
+  - Relationships
+
+2. Best Practices
+  - Immutable data
+  - Data class usage
+  - Property naming
+
+## Suggested Study Order
+
+1. Room Basics
+  - Entity creation
+  - Table configuration
+  - Primary keys
+
+2. Data Structure
+  - Column types
+  - Field requirements
+  - Relationships
+
+3. Advanced Features
+  - Indices
+  - Foreign keys
+  - Migration strategies
+
+## Key Technologies
+- Room Database
+- Kotlin Data Classes
+- SQLite
+- Android Architecture Components
+
+## Further Reading
+1. Room Entity Design
+2. Database Schema Design
+3. Data Relationships
+4. Migration Strategies
+5. Performance Optimization

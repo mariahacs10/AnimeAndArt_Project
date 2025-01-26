@@ -1,0 +1,61 @@
+# AppDatabase Learning Topics
+
+## High-Level Categories
+1. Room Database Configuration
+2. Singleton Pattern
+3. Database Migration
+4. Thread Safety
+
+## Core Concepts Used
+
+### Room Setup
+1. Database Configuration
+  - @Database annotation
+  - Version management
+  - Entity registration
+
+2. DAO Management
+  - Abstract methods
+  - Generated implementations
+  - Multiple DAOs
+
+### Design Patterns
+1. Singleton Implementation
+  - Double-checked locking
+  - Volatile instance
+  - Thread synchronization
+
+2. Builder Pattern
+  - Database construction
+  - Migration strategy
+  - Context handling
+
+## Suggested Study Order
+
+1. Room Configuration
+  - Database setup
+  - Entity registration
+  - Version control
+
+2. Design Patterns
+  - Singleton pattern
+  - Builder pattern
+  - Thread safety
+
+3. Migration Strategy
+  - Schema changes
+  - Version updates
+  - Data preservation
+
+## Key Technologies
+- Room Database
+- Kotlin Object Declaration
+- Synchronized Blocks
+- Volatile Variables
+
+## Further Reading
+1. Room Database Configuration
+2. Singleton Best Practices
+3. Database Migration Strategies
+4. Thread Safety in Kotlin
+5. Memory Management

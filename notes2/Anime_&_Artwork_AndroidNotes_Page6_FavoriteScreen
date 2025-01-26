@@ -1,0 +1,60 @@
+# FavoritesScreen Learning Topics
+
+## High-Level Categories
+1. Compose UI Architecture
+2. State Management
+3. Grid Layout
+4. Touch Interactions
+5. Theme Support
+
+## Android/Kotlin Concepts Used
+
+### Compose UI
+1. Material Components
+   - Scaffold
+   - TopAppBar
+   - LazyVerticalGrid
+   - AlertDialog
+
+2. Layout Patterns
+   - Box composable
+   - Aspect ratio
+   - Grid cells
+   - Padding
+
+### State Handling
+1. Observe State
+   - LiveData observation
+   - StateFlow collection
+   - Remember composables
+
+2. User Interactions
+   - Selection management
+   - Gesture detection
+   - Dialog state
+
+### Navigation
+1. Route Management
+   - NavController
+   - Deep links
+   - Back navigation
+
+### Theming
+1. Dynamic Theming
+   - Dark/Light modes
+   - Color schemes
+   - Background images
+
+## Key Technologies
+- Jetpack Compose
+- Material3
+- Coil Image Loading
+- Navigation Component
+- LiveData/StateFlow
+
+## Further Reading
+1. LazyGrid Implementation
+2. Multi-select Pattern
+3. Compose Navigation
+4. Image Loading
+5. Theme Management

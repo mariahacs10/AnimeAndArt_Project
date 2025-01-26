@@ -1,0 +1,77 @@
+# UserViewModel Learning Topics
+
+## High-Level Categories
+1. MVVM Architecture
+2. State Management
+3. Authentication
+4. Form Handling
+5. Social Integration
+
+## Android/Kotlin Concepts Used
+
+### Compose State Management
+1. MutableState
+   - Form fields
+   - UI state
+   - State hoisting
+
+2. StateFlow
+   - Theme preferences
+   - Reactive updates
+
+### Authentication
+1. User Operations
+   - Login/Logout
+   - Registration
+   - Password management
+
+2. Social Integration
+   - Account linking
+
+### Form Management
+1. Input Handling
+   - Field validation
+   - State updates
+   - Reset operations
+
+### Error Handling
+1. Result Class
+   - Success/Failure handling
+   - Error propagation
+   - Exception management
+
+## Suggested Study Order
+
+1. Basic Concepts
+   - ViewModel basics
+   - Compose State
+   - StateFlow
+
+2. Authentication
+   - User operations
+   - Session management
+   - Social integration
+
+3. Form Handling
+   - Input management
+   - Validation
+   - State updates
+
+4. Advanced Topics
+   - Error handling
+   - State persistence
+   - Social auth
+
+## Key Technologies
+- Jetpack Compose
+- ViewModel
+- StateFlow
+- Google Sign-In
+- Result API
+
+## Further Reading
+1. Compose State Management
+2. Authentication Patterns
+3. Form Validation
+4. Social Auth Integration
+5. Error Handling Patterns

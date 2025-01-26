@@ -40,26 +40,34 @@ import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import kotlinx.coroutines.runBlocking
 
+/**
+ * Main entry point of the application, handling lifecycle and navigation
+ * Implements Jetpack Compose UI with Material3 theming
+ */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Initialize dependencies
+
+        // Dependency initialization with manual DI
         val database = AppDatabase.getDatabase(applicationContext)
         val favoriteImageDao = database.favoriteImageDao()
         val apiService = RetrofitClient.createApiService
         val userRepository = UserRepository(applicationContext, favoriteImageDao)
         val favoritesRepository = FavoritesRepository(apiService, favoriteImageDao, userRepository)
+
+        // ViewModel factory setup for dependency injection
         val userViewModelFactory = UserViewModelFactory(userRepository, favoritesRepository)
         val favoritesViewModelFactory = FavoritesViewModelFactory(apiService, favoriteImageDao, userRepository)
         val userViewModel = ViewModelProvider(this, userViewModelFactory).get(UserViewModel::class.java)
 
+        // Compose UI setup with state management
         setContent {
-            // Collect states
+            // State collection using Compose state holders
             val isDarkModeEnabled by userViewModel.isDarkModeEnabled.collectAsState()
             val userState by userRepository.userState.collectAsState()
             val (userId, isUserLoggedIn) = userState
 
-            // Handle corrupted session
+            // Session corruption handler
             LaunchedEffect(userState) {
                 if (isUserLoggedIn && (userId == null || userId <= 0)) {
                     Log.e("MainActivity", "Corrupted session detected. Logging out.")
@@ -67,16 +75,19 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // Theme configuration with dark mode support
             MaterialTheme(
                 colorScheme = if (isDarkModeEnabled) darkColorScheme() else lightColorScheme()
             ) {
                 StatusBarColor(isDarkModeEnabled)
 
+                // Navigation destination logic
                 val (startDestination, validUserId) = when {
                     isUserLoggedIn && userId != null && userId > 0 -> "home_screen" to userId
                     else -> "login_screen" to null
                 }
 
+                // Main navigation setup
                 HomeNavigation(
                     userViewModel = userViewModel,
                     startDestination = startDestination,
@@ -87,44 +98,41 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+// Status bar customization with system UI controller
 @Composable
 fun StatusBarColor(isDarkModeEnabled: Boolean) {
     val systemUiController = rememberSystemUiController()
-    val statusBarColor = if (isDarkModeEnabled) {
-        Color.Black // Dark mode status bar color
-    } else {
-        Color(0xFF6650a4) // Light mode status bar color
-    }
+    val statusBarColor = if (isDarkModeEnabled) Color.Black else Color(0xFF6650a4)
 
+    // Cleanup effect for system UI changes
     DisposableEffect(systemUiController, statusBarColor) {
-        systemUiController.setStatusBarColor(
-            color = statusBarColor,
-            darkIcons = !isDarkModeEnabled // Use light icons in dark mode, dark icons in light mode
-        )
+        systemUiController.setStatusBarColor(color = statusBarColor, darkIcons = !isDarkModeEnabled)
         onDispose {}
     }
 }
-
-
+// Main navigation component with route handling
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeNavigation(
     userViewModel: UserViewModel,
     startDestination: String,
-    userId: Long?,  // Changed from Long? to String
+    userId: Long?,
     favoritesViewModelFactory: FavoritesViewModelFactory
 ) {
+    // Navigation controller setup
     val navController = rememberNavController()
     val forgotPasswordViewModel: ForgotPasswordViewModel = viewModel()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val favoritesViewModel: FavoritesViewModel = viewModel(factory = favoritesViewModelFactory)
 
+    // Navigation host with route definitions
     NavHost(navController = navController, startDestination = startDestination) {
-        // Update relevant composable routes
+        // Route configurations with session validation
         composable("login_screen") {
             LoginScreen(navController = navController, userViewModel, favoritesViewModel)
         }
-
+        // Other route definitions...
         composable(
             route = NavRoutes.ImageDetail.route,
             arguments = listOf(

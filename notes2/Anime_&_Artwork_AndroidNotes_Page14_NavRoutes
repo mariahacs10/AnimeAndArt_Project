@@ -1,0 +1,56 @@
+# NavRoutes Learning Topics
+
+## High-Level Categories
+1. Navigation Architecture
+2. Route Management
+3. Parameter Handling
+4. Type Safety
+
+## Core Concepts Used
+
+### Sealed Class Pattern
+1. Route Definition
+  - Object declarations
+  - Base class inheritance
+  - Type safety
+
+2. Route Parameters
+  - Dynamic routing
+  - Parameter injection
+  - URL encoding
+
+### Navigation Features
+1. Screen Navigation
+  - Route creation
+  - Parameter passing
+  - Deep linking
+
+## Suggested Study Order
+
+1. Route Structure
+  - Sealed classes
+  - Route patterns
+  - Base implementation
+
+2. Parameter Handling
+  - Dynamic routes
+  - Type conversion
+  - URL formatting
+
+3. Navigation Implementation
+  - Route mapping
+  - Screen transitions
+  - State preservation
+
+## Key Technologies
+- Jetpack Navigation
+- Kotlin Sealed Classes
+- Route Parameters
+- Deep Links
+
+## Further Reading
+1. Navigation Component
+2. Sealed Classes
+3. Route Pattern Design
+4. Deep Linking
+5. State Management

@@ -1,0 +1,86 @@
+# FavoritesRepository Learning Topics
+
+## High-Level Categories
+1. Data Synchronization
+2. Offline-First Architecture
+3. Coroutines & Threading
+4. Error Handling
+5. Data Mapping
+6. Cache Management
+
+## Android/Kotlin Concepts Used
+
+### Architecture Patterns
+- Repository Pattern
+- Offline-First Design
+- Data Mapping
+- SSOT (Single Source of Truth)
+
+### Concurrency
+1. Coroutines
+   - withContext
+   - CoroutineScope
+   - Dispatchers.IO
+   - suspend functions
+
+2. Threading
+   - Background Operations
+   - Main-Safe Code
+
+### Data Management
+1. Room Database
+   - DAO Operations
+   - Entity Mapping
+   - Transaction Management
+
+2. Network Operations
+   - Retrofit Integration
+   - Response Handling
+   - Error Management
+
+### Error Handling
+1. Result Class
+2. Exception Handling
+3. Null Safety
+4. Error Logging
+
+## Suggested Study Order
+
+1. Basic Concepts
+   - Repository Pattern
+   - Room Database
+   - Retrofit Basics
+
+2. Concurrency
+   - Coroutines
+   - Dispatchers
+   - Background Processing
+
+3. Data Operations
+   - CRUD Operations
+   - Data Mapping
+   - Cache Management
+
+4. Synchronization
+   - Online/Offline Strategy
+   - Data Consistency
+   - Error Recovery
+
+5. Advanced Topics
+   - Transaction Management
+   - Memory Management
+   - Performance Optimization
+
+## Key Technologies
+- Room Database
+- Retrofit
+- Kotlin Coroutines
+- Android Logging
+- SharedPreferences
+
+## Further Reading
+1. Offline-First Architecture
+2. Data Synchronization Patterns
+3. Cache Invalidation Strategies
+4. Network Error Handling
+5. Unit Testing Repositories

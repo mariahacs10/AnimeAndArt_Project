@@ -1,0 +1,63 @@
+# UserDao Learning Topics
+
+## High-Level Categories
+1. Room DAO Operations
+2. SQL Queries
+3. User Authentication
+4. Coroutines Integration
+
+## Core Concepts Used
+
+### Room DAO Pattern
+1. Database Operations
+  - Insert
+  - Query
+  - Update
+  - Transaction handling
+
+2. SQL Query Design
+  - SELECT operations
+  - WHERE clauses
+  - LIMIT usage
+  - Boolean handling
+
+### Asynchronous Operations
+1. Coroutines
+  - Suspend functions
+  - Background processing
+  - Thread management
+
+2. Null Safety
+  - Nullable returns
+  - Safe queries
+  - Optional results
+
+## Suggested Study Order
+
+1. Basic DAO
+  - CRUD operations
+  - Query writing
+  - Annotations
+
+2. User Authentication
+  - Login state
+  - Password management
+  - Session handling
+
+3. Advanced Features
+  - Complex queries
+  - Transactions
+  - Error handling
+
+## Key Technologies
+- Room Database
+- Kotlin Coroutines
+- SQL
+- DAO Pattern
+
+## Further Reading
+1. Room DAO Implementation
+2. SQL Query Optimization
+3. Authentication Patterns
+4. Coroutines with Room
+5. Database Security
