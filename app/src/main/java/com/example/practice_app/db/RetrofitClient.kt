@@ -10,7 +10,7 @@ object RetrofitClient {
     // Define the base URL for the API. This should be changed to your actual API URL in production. but for now this
     //is fine
     private const val BASE_URL = "https://artworkdockerimage-v1.onrender.com"
-    // local     private const val BASE_URL = "http://192.168.68.118:8686"
+//    private const val BASE_URL = "http://192.168.68.118:8686"
 
 
     // Create a Gson instance with lenient parsing to handle malformed JSON more gracefully
